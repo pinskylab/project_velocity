@@ -1,0 +1,7 @@
+library(RNetCDF)
+library(ncdf4)
+library(data.table)
+SST89 <- read("/Users/jim/Documents/proj_ranges/Jim/OISST data/AVHRR/avhrr-only-v2.19890101")
+to.read = file("/Users/jim/Documents/proj_ranges/Jim/OISST data/AVHRR/avhrr-only-v2.19890101", "rb")
+readBin(to.read, integer(), n=4, endian = "little")
+newdata = file("/Users/jim/Documents/proj_ranges/Jim/OISST data/AVHRR/avhrr-only-v2.19890101", "rb")
