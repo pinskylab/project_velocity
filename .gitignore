@@ -1,0 +1,17 @@
+
+.Rapp.history
+
+.Rhistory
+.Rproj.user
+
+*.RData
+*.rdata
+
+*.gz
+*.nc
+*.csv
+*.txt
+*.xls
+
+*.pdf
+*.docx
