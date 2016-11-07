@@ -20,3 +20,7 @@ proj_ranges.Rproj
 
 
 avhrr-only-v2.19890101
+
+
+#ignore all cmsp data files for now
+cmsp_data/*
