@@ -6,17 +6,17 @@
 
 proj_ranges.Rproj
 
-*.RData
-*.rdata
+#*.RData
+#*.rdata
 
-*.gz
+#*.gz
 *.nc
-*.csv
-*.txt
-*.xls
+#*.csv
+#*.txt
+#*.xls
 
-*.pdf
-*.docx
+#*.pdf
+#*.docx
 
 
 avhrr-only-v2.19890101
