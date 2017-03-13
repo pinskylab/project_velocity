@@ -3,7 +3,7 @@ library(MASS)
 library(data.table) 
 library(ggplot2)
 library(reshape2)
-library(lattice) 
+library(lattice)  
 library(dismo)
 require(Hmisc)
 # library(gbm)
@@ -170,7 +170,6 @@ for(i in 1:length(allspp)){
   modeldiag$r2.pres.1deg[i]<-presr2
   modeldiag$r2.abun.1deg[i]<-abunr2
 
-  # Test w/ existing climatology data_compare output with zeroing region and biomass effects, vs. choosing one arbitrarily with mean biomass
   # ESTIMATING MODEL UNCERTAINTY ====================================================================================================
   pd <- proj.grid
   pd$rugosity <- log(pd$rugosity + 1)
@@ -212,11 +211,10 @@ for(i in 1:length(allspp)){
   ilink <- family(mod1)$linkinv
   a.range <- matrix(nrow=nrow(pd), ncol=n) # for filling with a loop
   for(j in 1:n){
-    # pred.a gives a response level prediction (I believe b/c we use no link function....)
     pred.a1 <- Xp.1%*%br.1[j,] # combine mean predictions from Xp with resamples of parameter estimates_ the %*% is a matrix algebra operator I believe
     pred.a2 <- Xp.2%*%br.2[j,] # may need to add the smear estimate here
-    a.range[,j] <- ilink(pred.a1) * exp(pred.a2) * smear# mod2 uses the logit link function_here the 'ilink' function transforms it back to the scale of the response variable (i.e. a 0-1 value)
-    # the ilink function is not needed for biomass model (mod2) as it does not use the link function
+    a.range[,j] <- ilink(pred.a1) * exp(pred.a2) * smear# mod1 uses the logit link function_here the 'ilink' function transforms it back to the scale of the response variable (i.e. a 0-1 value)
+    # the ilink function is not needed for biomass model (mod2) as it does not use the link function (gaussian distribution)
   } 
   
   uncer <- apply(a.range, 1, var)
@@ -255,7 +253,7 @@ for(i in 1:length(allspp)){
   # Add some way to see how realistic the predicted values are with observed values_this is done graphically but.......
   # How to get better predicted values......some sort of rescaling based on the distribution of observed vs. predicted? 
   # Make internal loop for going through each prediction grid (n=39)
-  # For each run I really only need to save the centroid value and sum wcpue predictions; plus this must be done at the regional level too for U.S. locations
+  # For each run I really only need to save the centroid value and sum wtcpue predictions; plus this must be done at the regional level too for U.S. locations
   # Create a third plot showing historical average cpue (averaged over seasons) within the bathgrid cells? Just for a rough comparison....
   # Do a loop with more species and then do some plots looking at sample size effects on dev.explained, smear, etc.
   # Read up on the dismo diagnostics above
@@ -266,7 +264,7 @@ for(i in 1:length(allspp)){
 
 
 # =========================================================================================================
-# Script ends here_below is some code on estimating mean annual cpue (which we no longer use as a predictor),
+# below is some code on estimating mean annual cpue (which we no longer use as a predictor),
 # also BRT and gam output that I saved in case it is useful down the road
 # =========================================================================================================
 
@@ -290,11 +288,10 @@ avemeanbiomass <- aggregate(avecatchyrreg$biomassmean, by=list(avecatchyrreg$sur
 colnames(avemeanbiomass) <- c('survey', 'avecpue')
 rm(ave.catch.wt, avecatchyrreg, haulsAbun, mydat)
 
-
-  #===================================================================================
-  #Boosted Regression Tree models using cross validation 
-  # I used Elith et al. 2008_also the supplemental with that has step by steps
-  #===================================================================================
+#===================================================================================
+#Boosted Regression Tree models using cross validation 
+# I used Elith et al. 2008_also the supplemental with that has step by steps
+#===================================================================================
   BRTB1 <- gbm.step(data=haulsMod,
                               gbm.x = c('SBT.seasonal', 'SST.seasonal.mean', 'SBT.min', 'SBT.max', 'SST.max', 'rugosity', 'GRAINSIZE', 'logmeanbiom', 'regionfact', 'habitatFact'), # 27:28, 
                               gbm.y = 'presNum',
@@ -337,7 +334,7 @@ rm(ave.catch.wt, avecatchyrreg, haulsAbun, mydat)
 # Is the smear effect needed with BRT_we could try not log transforming the response variable....
     # need to compare predicted verse observed and exp(predicted) for logged response variable
 # Can we just do a BRT with all the zeros included for cpue?.....probably not, didn't try
-# USE A BRT OF PREDICTOR VARIABLE(S) (in replace of the usual respone) to see how the habitat variables group together_as in De'ath (2000)
+# USE A normal regression tree OF PREDICTOR VARIABLE(S) (in replace of the usual respone) to see how the habitat variables group together_as in De'ath (2000)
 # Do we want to use the model simplification step for BRT_probably not as no gam analogue_supposed to be slow_function = gbm.simplify
 
   
