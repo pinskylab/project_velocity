@@ -10,21 +10,21 @@ require(Hmisc)
 # library(grDevices)
 setwd('/Users/jamesmorley/Documents/project_velocity')
 
-load('data/master_hauls_March7_2017.RData') # import master hauls file, and trimmed hauls file for calculating annual mean cpue
+load('data/master_hauls_March7_2017.RData') # import master hauls file
 load('data/dat_selectedspp_Feb_1_2017.Rdata')# load species catch data
-load('data/ProjectionBathGrid_Feb27_2017.RData') 
+load('data/ProjectionBathGrid_Feb27_2017.RData')# load projection grid (temporary until we receive climate projection data)
 
 dat <- dat[!(dat$wtcpue == 0 & dat$region == 'DFO_SoGulf'),] # the zeros in SoGulf are actual zeros (ie not just a scale issue) and thus are true absences
 # NOTE: All chinook salmon ('oncorhynchus tshawytscha_Pac') caught in WC_ANN 2005-2014 (n = 100, out of 1195 total catches in Pacific) were not weighed_probably a tagging study or something....
 # Weight could potentially be estimated from #caught? Would need to redo that from script 1.....maybe if a major revision is required (as it is an important species)
 
-dat$wtcpue[dat$wtcpue == 0] <- 0.00001 # 'zeros' in dat are species too light to register on scales_here a value just below the lowest non-zero value is assigned_for transforming data
+dat$wtcpue[dat$wtcpue == 0] <- 0.00001 # 'zeros' in dat are now species too light to register on scales_here a value below the lowest non-zero value is assigned_for transforming data
 dat$logwtcpue <- log(dat$wtcpue)
 # trim columns that are already in master hauls file, which will be merged in below with the hauls data
 dat <- data.frame(haulid = dat$haulid, sppocean = dat$sppocean, Freq = dat$Freq, wtcpue = dat$wtcpue, logwtcpue = dat$logwtcpue, presfit = TRUE, stringsAsFactors = F)
 
 # ==================================================================================================================================================
-# BELOW IS A LOOP FOR CONDUCTION OF AN UNCERTAINTY ANALYSIS FOR ANY SPECIES
+# BELOW IS A LOOP FOR CONDUCTING UNCERTAINTY ANALYSIS FOR ANY SPECIES
 # ==================================================================================================================================================
 allspp <- c('triglops forficatus_Pac', 'sebastes saxicola_Pac', 'paralithodes camtschaticus_Pac', 'microstomus pacificus_Pac', 'pandalus borealis_Atl',
             'menippe mercenaria_Atl', 'lutjanus campechanus_Atl', 'loligo pealeii_Atl', 'peprilus triacanthus_Atl', 'rhizoprionodon terraenovae_Atl')
