@@ -32,7 +32,7 @@ oceans <- c('Pac', 'Pac', 'Pac', 'Pac', 'Atl', 'Atl', 'Atl', 'Atl', 'Atl', 'Atl'
 options(warn=1) # print warnings as they occur
 
 n = rep(NA, length(allspp))
-modeldiag = data.frame(sppocean=n, npres=n, ntot=n, smear=n, pred_obsMedian=n, pred_obsMean=n, pred_obsMedianNosmear=n, pred_obsMeanNosmear=n, thresh=n, auc=n, tss=n, tssmax=n, acc=n, accmax=n, sens=n, spec=n, kappa=n, kappamax=n, rpb=n, r2.biomass=n, r2.all=n, r2.pres.1deg=n, r2.abun.1deg=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE)
+modeldiag = data.frame(sppocean=n, npres=n, ntot=n, smear=n, pred_obsMedian=n, pred_obsMean=n, pred_obsMedianNosmear=n, pred_obsMeanNosmear=n, thresh=n, auc=n, tss=n, tssmax=n, acc=n, accmax=n, sens=n, spec=n, kappa=n, kappamax=n, rpb=n, r2.biomass=n, r2.all=n, r2.pres.survey=n, r2.abun.survey=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE)
 
 for(i in 1:length(allspp)){ 
   sp <- allspp[i]
@@ -80,6 +80,7 @@ for(i in 1:length(allspp)){
   # 'select=T' allows model terms to be penalized to have no effect (ie df is negligible)_might be a 'model selection' strategy that can work in our framework_also seems to reduce curviness, but not as much as the 'gamma' option can
      
   pdf(width=9, height=9, file=paste('/figures/uncertainty/gamFit_', sp, '.pdf', sep=''))
+  # Plots of gam fits
   plot(mod1, scale=0, shade=TRUE, all.terms=T, pages=1); mtext(paste(sp," presence_absence"),outer=T,line=-2)
   plot(mod2, scale=0, shade=TRUE, all.terms=T, pages=1); mtext(paste(sp," log(cpue)"),outer=T,line=-2)
   
@@ -87,15 +88,18 @@ for(i in 1:length(allspp)){
   preds1 <- mod1$fitted.values # vector of predicted/modeled values based on observed data 
   preds2 <- exp(predict(mod2, newdata = haulsMod, type='response', na.action='na.pass')) # abundance predictions_needs different approach to fit to whole data set
   smear <- mean(exp(mod2$residuals)) # smearing estimator for re-transformation bias (see Duan 1983, http://www.herc.research.va.gov/include/page.asp?ID=cost-regression)
-  preds <- preds1*preds2*smear # adds the bias correction as well_just a scaler that makes values more similar to observed (sometimes....)
-  preds.nosmear <- preds1*preds2 # without the smear value
+  preds <- preds1*preds2*smear # adds the bias correction as well_just a scaler that makes values more similar to observed (though not always....)
+  preds.nosmear <- preds1*preds2 # without the smear value_just for comparison
   haulsMod$wtcpue[haulsMod$presfit == FALSE] <- 0 
   haulsMod$predictions <- preds
   haulsMod$predictions.nosmear <- preds.nosmear
+  
+  # Plots of predicted vs. observed, with and w/o the smear
   par(mfrow=c(2,2))
   plot(wtcpue~predictions, ylab='observed cpue', main='Obs. vs pred. (w/ smear)', data=haulsMod)
   mtext(paste('Median diff=', summary(haulsMod$predictions - haulsMod$wtcpue)[3], sep=''), side=3, line=-1)
   mtext(paste('Mean diff=', summary(haulsMod$predictions - haulsMod$wtcpue)[4], sep=''), side=3, line=-2.5)
+  mtext(paste('Smear=', round(smear, digits=2), sep=''), side=3, line=-4)
   plot(wtcpue~predictions.nosmear, ylab='observed cpue', main='Obs. vs pred. (no smear)', data=haulsMod)
   mtext(paste('Median diff=', summary(haulsMod$predictions.nosmear - haulsMod$wtcpue)[3], sep=''), side=3, line=-1)
   mtext(paste('Mean diff=', summary(haulsMod$predictions.nosmear - haulsMod$wtcpue)[4], sep=''), side=3, line=-2.5)
@@ -105,7 +109,6 @@ for(i in 1:length(allspp)){
   modeldiag$npres[i] = sum(haulsMod$presfit)
   modeldiag$ntot[i] = dim(haulsMod)[1]
   modeldiag$smear[i] = smear
-  
   modeldiag$pred_obsMedian[i] = summary(haulsMod$predictions - haulsMod$wtcpue)[3]
   modeldiag$pred_obsMean[i] = summary(haulsMod$predictions - haulsMod$wtcpue)[4]
   modeldiag$pred_obsMedianNosmear[i] = summary(haulsMod$predictions.nosmear - haulsMod$wtcpue)[3]
@@ -129,11 +132,10 @@ for(i in 1:length(allspp)){
   
   # abundance model diagnostics
   modeldiag$dev.biomass[i] = summary(mod2)$dev.expl
-  # Make a temp dataframe to do this correlation, because the 'cor' function doesn't work with NAs present
+  # Make a temp dataframe to do this correlation, because the 'cor' function doesn't work with NAs present and some species have NA for one or a few wtcpue
   abc <- data.frame(cbind(prediction = as.vector(log(preds2[haulsMod$presfit])), observed = as.vector(haulsMod$logwtcpue[haulsMod$presfit])))
   abc <- abc[!is.na(abc$observed),]
   modeldiag$r2.biomass[i] = cor(abc$prediction, abc$observed)^2 # correlation of log(biomass) when present
-  
   # full model diagnostics
   abc <- data.frame(cbind(prediction = as.vector(preds), observed = as.vector(haulsMod$wtcpue)))
   abc <- abc[!is.na(abc$observed),]
@@ -150,28 +152,28 @@ for(i in 1:length(allspp)){
   modeldiag$sens[i] = with(conf[e.ind,], (tp)/(tp+fn)) # sensitivity: fraction of correctly predicted presences
   modeldiag$spec[i] = with(conf[e.ind,], (tn)/(tn+fp)) # specificity: fraction of correctly predicted absences
   modeldiag$kappa[i] = e@kappa[e.ind] # Cohen's kappa
-    
-  test<-cbind(haulsMod,preds1,preds)
-  # originally Malin had 'cs1' for 'surveyfact'...not sure what that is about
-  t1<-tapply(test$preds1,list(test$year,test$surveyfact),mean) #average predicted p(occur)
-  t2<-tapply(test$presfit,list(test$year,test$surveyfact),mean) #proportion of hauls with presence
-  t3<-tapply(test$preds,list(test$year,test$surveyfact),mean) #average predicted abundance
-  t4<-tapply(test$wtcpue,list(test$year,test$surveyfact),mean) #average observed abundance
   
-  presr2<-round(cor(stack(as.data.frame(t2))[,1],stack(as.data.frame(t1))[,1],use="p")^2,2)
-  abunr2<-round(cor(stack(as.data.frame(t4))[,1],(stack(as.data.frame(t3))[,1]),use="p")^2,2)
-  par(mfrow=c(1,2))
+  # Some survey-level diagnostic tests of the model fits  
+  test<-cbind(haulsMod,preds1,preds)
+  # originally Malin had 'cs1' for 'surveyfact'...which was a grid based prediction, which I think still needs to be developed
+  t1<-tapply(test$preds1,list(test$year,test$surveyfact),mean) #average predicted p(occur) by year and survey (season x region)
+  t2<-tapply(test$presfit,list(test$year,test$surveyfact),mean) #proportion of hauls with presence by survey
+  t3<-tapply(test$preds,list(test$year,test$surveyfact),mean) #average predicted abundance by survey
+  t4<-tapply(test$wtcpue,list(test$year,test$surveyfact),mean) #average observed abundance
+  # Make survey-level correlations of model predicted vs. observed
+  presr2 <- round(cor(stack(as.data.frame(t2))[,1],stack(as.data.frame(t1))[,1],use="p")^2,2)
+  abunr2 <- round(cor(stack(as.data.frame(t4))[,1],(stack(as.data.frame(t3))[,1]),use="p")^2,2)
   plot(stack(as.data.frame(t2))[,1],stack(as.data.frame(t1))[,1],xlab="Proportion of hauls with species present (by year and survey)",ylab="Mean predicted probability of occurrence", cex=0.5,main=sp)
   mtext(paste("r^2 =",presr2))
   plot(stack(as.data.frame(t4))[,1],(stack(as.data.frame(t3))[,1]),xlab="Average log(WTCPUE) (by year and survey)",ylab="Average predicted log(WTCPUE)", cex=0.5,main=sp)
   mtext(paste("r^2 =",abunr2))
   par(mfrow=c(1,1))
-  # Need to change the name, b/c this isn't looking at it spatially anymore, or I need to add code to do it spatially
-  modeldiag$r2.pres.1deg[i]<-presr2
-  modeldiag$r2.abun.1deg[i]<-abunr2
-
+  
+  modeldiag$r2.pres.survey[i]<-presr2
+  modeldiag$r2.abun.survey[i]<-abunr2
+    
   # ESTIMATING MODEL UNCERTAINTY ====================================================================================================
-  pd <- proj.grid
+  pd <- proj.grid 
   pd$rugosity <- log(pd$rugosity + 1)
   # Below some arbitrary space fillers while I'm waiting for climate files to be completed
   pd$SBT.seasonal <- rnorm(nrow(pd), mean=mean(haulsMod$SBT.seasonal), sd=2)

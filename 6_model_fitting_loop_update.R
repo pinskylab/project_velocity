@@ -16,7 +16,7 @@ if(Sys.info()["user"] == "lauren"){
 
 # Loop through species and fit models.
 library(mgcv);library(dismo)
-
+#COME UP WITH NEW NAME FOR THIS SO IT DOESN'T OVERWRITE_ADD 2017 OR SOMETHING
 runname <- "fitallreg" # use all regions in each fit that are from the same ocean
 
 load("data/dat_selectedspp.Rdata")
