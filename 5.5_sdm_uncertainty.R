@@ -42,7 +42,7 @@ for(i in 1:length(allspp)){
   haulsMod <- hauls[hauls$ocean == ocean,] # trim master hauls file to the ocean of interest 
   haulsMod <- merge(haulsMod, mydat, by='haulid', all.x = T, sort=F)   # Add empty hauls from the relavant ocean
   haulsMod$presfit[is.na(haulsMod$presfit)] <- FALSE
-  haulsMod <- droplevels(haulsMod) # mainly to drop the west coast 'regionfact' levels
+  haulsMod <- droplevels(haulsMod) # drop the west coast 'regionfact' levels
   
   # Create a conditional for surveys that never catch 'sp', and conform that region to one that catches them_this prevents the factor of that region alone from explaining low abundance
   # This basically assumes that catchability is the same in both regions_based on gear_which may be reasonable if in the one region they aren't there anyway_it assumes that a species' absence isn't due to any sampling artifact, which is also reasonable in most cases

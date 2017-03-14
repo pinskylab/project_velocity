@@ -26,4 +26,4 @@ avhrr-only-v2.19890101
 cmsp_data/*
 
 # ignore all "data" files (also on https://github.com/mpinsky/proj_ranges)
-data/*
+#data/*
