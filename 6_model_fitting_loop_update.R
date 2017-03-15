@@ -32,7 +32,7 @@ dat <- data.frame(haulid = dat$haulid, sppocean = dat$sppocean, Freq = dat$Freq,
 # Create table to store model diagnostics
 allspp = sort(unique(dat$sppocean))
 n = rep(NA, length(allspp))
-modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, thresh=n, thresh.tt=n, auc=n, auc.tt=n, tss=n, tss.tt=n, tssmax=n, tssmax.tt=n, acc=n, acc.tt=n, accmax=n, accmax.tt=n, sens=n, sens.tt=n, spec=n, spec.tt=n, kappa=n, kappa.tt=n, kappamax=n, kappamax.tt=n, rpb=n, smear=n, pred_obsMedian=n, pred_obsMean=n, pred_obsMedianNosmear=n, pred_obsMeanNosmear=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.survey=n, r2.abun.survey=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # tt is for training/testing model
+modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, thresh=n, thresh.tt=n, auc=n, auc.tt=n, tss=n, tss.tt=n, tssmax=n, tssmax.tt=n, acc=n, acc.tt=n, accmax=n, accmax.tt=n, sens=n, sens.tt=n, spec=n, spec.tt=n, kappa=n, kappa.tt=n, kappamax=n, kappamax.tt=n, rpb=n, smear=n, pred_obsMedian=n, pred_obsMean=n, pred_obsMedianNosmear=n, pred_obsMeanNosmear=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.surv_year=n, r2.abun.surv_year=n, dev.pres=n, dev.biomass=n, dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # tt is for training/testing model
 
 ## small test to see which species are only marginally present in Newfoundland or WCAnn surveys
 #nosurfregions <- c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn")
@@ -57,7 +57,7 @@ options(warn=1) # print warnings as they occur
 allwarnings = NULL
 print(paste(length(allspp), 'models to fit'))
 
-for(i in 1:2){ #length(allspp)){ 
+for(i in 1:40){ #length(allspp)){ 
   #for(i in c(18,22,25,27,28)){ # for testing on trouble species
   fittrain = TRUE
   mygam1tt <- mygam2tt <- mygam1 <- mygam2 <- preds <- preds1 <- preds2 <- predstt <- preds1tt <- preds2tt <- NULL # Add 'no smear' preds
@@ -66,8 +66,7 @@ for(i in 1:2){ #length(allspp)){
   print(paste(i,sp, Sys.time()))
   
   mydat<-dat[dat$sppocean==sp,] 
-  myhauls<-unique(mydat$haulid) # MAY NOT BE NEEDED WITH MY MODIFICATION
-   
+
   ####################################################
   # Add records for when there was a haul but no fish_note: this changed from previous version, same end product
   ####################################################
@@ -91,7 +90,6 @@ for(i in 1:2){ #length(allspp)){
     allwarnings <- c(allwarnings, mywarn)
     warning(mywarn)
     regstofill <- names(npres)[as.numeric(npres) == 0]
-    
     spdata$regionfact[spdata$region %in% regstofill] <- names(npres)[which.max(npres)] # in regions with no observations, replace the region ID with that from a region with observations. this prevents a low region coefficient from explaining the zero observations.
      
     # if a region has no presences
@@ -111,9 +109,8 @@ for(i in 1:2){ #length(allspp)){
   #Set up data for training and testing to evaluate performance
   ####################################################
   
-  #Subset training and testing data by year (use first 80% to predict last 20%)
+  #Subset training and testing data by year by indexing row numbers (use first 80% to predict last 20%)
   spdata<-spdata[order(spdata$year,spdata$month),]
-  
   # indices for both pres and abs
   ninds<-table(spdata$regionfact) # number of entries per region (regions as set up for fitting)
   traininds <- NULL; testinds <- NULL
@@ -121,7 +118,7 @@ for(i in 1:2){ #length(allspp)){
     traininds <- c(traininds, which(as.character(spdata$regionfact) == names(ninds)[j])[1:round(ninds[j]*0.8)])
     testinds <- c(testinds, which(as.character(spdata$regionfact) == names(ninds)[j])[(round(ninds[j]*0.8)+1):ninds[j]])
   }
-  
+
   # indices for only where present (for the abundance model), including fake zeros
   trainindsp <- intersect(traininds, which(spdata$presfit.pad))
   testindsp <- intersect(testinds, which(spdata$presfit.pad))
@@ -154,7 +151,7 @@ for(i in 1:2){ #length(allspp)){
   }
 
   # make sure we have at least 6 unique levels for each variable (necessary to fit gam with 4 knots)
-  # look at training presence indices, since the most constraining (for mygam2tt)_SHOULD THIS BE TESTING? B/C IT'S THE SMALLER DATA SET
+  # look at training presence indices, since the most constraining (for mygam2tt)
   levs <- apply(spdata[trainindsp,c('SBT.seasonal', 'SST.seasonal.mean', 'SBT.min', 'SBT.max', 'SST.max', 'rugosity', 'GRAINSIZE')], 2, FUN=function(x) length(unique(x)))
   if(any(levs < 6)){
     mywarn <- paste("Not enough (>=6) unique levels in training presence set for", i, sp, ". Won't fit training models")
@@ -339,8 +336,8 @@ for(i in 1:2){ #length(allspp)){
   #plot(stack(as.data.frame(t4))[,1],(stack(as.data.frame(t3))[,1]),xlab="Average log(WTCPUE) (by 1 deg square)",ylab="Average predicted log(WTCPUE)", cex=0.5,main=sp)
   #mtext(paste("r^2 =",abunr2))
   
-  modeldiag$r2.pres.1deg[i]<-presr2
-  modeldiag$r2.abun.1deg[i]<-abunr2
+  modeldiag$r2.pres.surv_year[i]<-presr2
+  modeldiag$r2.abun.surv_year[i]<-abunr2
   
   ####################################################
   #### Save models for later projections
