@@ -1,11 +1,9 @@
 library(mgcv)
 library(MASS)
 library(data.table) 
-library(ggplot2)
-library(reshape2)
 library(lattice)  
 library(dismo)
-require(Hmisc)
+require(Hmisc) 
 # library(gbm)
 # library(grDevices)
 setwd('/Users/jamesmorley/Documents/project_velocity')
@@ -13,7 +11,7 @@ setwd('/Users/jamesmorley/Documents/project_velocity')
 load('data/master_hauls_March7_2017.RData') # import master hauls file
 load('data/dat_selectedspp_Feb_1_2017.Rdata')# load species catch data
 load('data/ProjectionBathGrid_Feb27_2017.RData')# load projection grid (temporary until we receive climate projection data)
-
+ 
 dat <- dat[!(dat$wtcpue == 0 & dat$region == 'DFO_SoGulf'),] # the zeros in SoGulf are actual zeros (ie not just a scale issue) and thus are true absences
 # NOTE: All chinook salmon ('oncorhynchus tshawytscha_Pac') caught in WC_ANN 2005-2014 (n = 100, out of 1195 total catches in Pacific) were not weighed_probably a tagging study or something....
 # Weight could potentially be estimated from #caught? Would need to redo that from script 1.....maybe if a major revision is required (as it is an important species)
@@ -78,12 +76,12 @@ for(i in 1:length(allspp)){
   mod1null <- gam(presfit~s(rugosity) + s(GRAINSIZE) + regionfact + habitatFact - 1, family=binomial, data=haulsMod, select=TRUE, gamma=gammaPA)
   mod2null <- gam(logwtcpue.pad~s(rugosity) + s(GRAINSIZE) + regionfact + habitatFact - 1, data=haulsMod[haulsMod$presfit.pad == TRUE,], select=TRUE, gamma=gammaBiom)
   # 'select=T' allows model terms to be penalized to have no effect (ie df is negligible)_might be a 'model selection' strategy that can work in our framework_also seems to reduce curviness, but not as much as the 'gamma' option can
-     
+      
   pdf(width=9, height=9, file=paste('/figures/uncertainty/gamFit_', sp, '.pdf', sep=''))
   # Plots of gam fits
   plot(mod1, scale=0, shade=TRUE, all.terms=T, pages=1); mtext(paste(sp," presence_absence"),outer=T,line=-2)
   plot(mod2, scale=0, shade=TRUE, all.terms=T, pages=1); mtext(paste(sp," log(cpue)"),outer=T,line=-2)
-  
+   
   # Model diagnostics from script 6
   preds1 <- mod1$fitted.values # vector of predicted/modeled values based on observed data 
   preds2 <- exp(predict(mod2, newdata = haulsMod, type='response', na.action='na.pass')) # abundance predictions_needs different approach to fit to whole data set
@@ -236,7 +234,7 @@ for(i in 1:length(allspp)){
   # a.rangeRaster <- data.frame(cbind(lonBathgrid = pd$lonBathgrid, latBathgrid = pd$latBathgrid, a.range))
   # habitat <- rasterFromXYZ(a.rangeRaster, res=c(0.05,0.05), digits=9)
   # plot(habitat[[50]]) # plots one layer of the rasterbrick 
-  
+   
   # compute centroids for each model iteration
   a.range <- data.frame(cbind(a.range, lonBathgrid = pd$lonBathgrid, latBathgrid = pd$latBathgrid))
   centroid <- data.frame(model.iter=numeric(), latcentroid=numeric(), loncentroid=numeric()) # this will become the final output file

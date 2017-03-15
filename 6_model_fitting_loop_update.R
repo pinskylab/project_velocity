@@ -12,27 +12,27 @@ if(Sys.info()["user"] == "lauren"){
   setwd('~/backup/NatCap/proj_ranges/')
   modfolder <- 'output/CEmodels/'
 }
-
+if(Sys.info()["user"] == "jamesmorley"){
+  setwd('/Users/jamesmorley/Documents/project_velocity')
+  modfolder <- 'output/CEmodels/'
+}
 
 # Loop through species and fit models.
 library(mgcv);library(dismo)
-#COME UP WITH NEW NAME FOR THIS SO IT DOESN'T OVERWRITE_ADD 2017 OR SOMETHING
-runname <- "fitallreg" # use all regions in each fit that are from the same ocean
+runname <- "fitallreg_2017" # use all regions in each fit that are from the same ocean
 
-load("data/dat_selectedspp.Rdata")
+load('data/master_hauls_March7_2017.RData') # import master hauls file
+load('data/dat_selectedspp_Feb_1_2017.Rdata')# load species catch data
+dat <- dat[!(dat$wtcpue == 0 & dat$region == 'DFO_SoGulf'),] # the zeros in SoGulf are actual zeros (ie not just a scale issue) and thus are true absences
+dat$wtcpue[dat$wtcpue == 0] <- 0.00001 # 'zeros' in dat are now species too light to register on scales_here a value below the lowest non-zero value is assigned_for transforming data
 dat$logwtcpue <- log(dat$wtcpue)
-dat$survey <- dat$region #keeps NEFSC as two separate surveys in "survey"
-dat$surveyfact <-as.factor(dat$survey)
-dat$region[dat$region %in% c("NEFSC_NEUSFall","NEFSC_NEUSSpring")] <- "NEFSC_NEUS" #NEFSC as one region in "region"
-dat$regionfact <- as.factor(dat$region) # the version ot use for model fitting
-# if using season
-dat$season <- as.factor(c(rep('wi', 3), rep('sp', 3), rep('su', 3), rep('fa', 3))[dat$month])
-dat$regseas <- as.factor(paste(dat$region,dat$season,sep="_"))
+# trim columns that are already in master hauls file, which will be merged in below with the hauls data
+dat <- data.frame(haulid = dat$haulid, sppocean = dat$sppocean, Freq = dat$Freq, wtcpue = dat$wtcpue, logwtcpue = dat$logwtcpue, presfit = TRUE, stringsAsFactors = F)
 
+# Create table to store model diagnostics
 allspp = sort(unique(dat$sppocean))
 n = rep(NA, length(allspp))
-modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, thresh=n, thresh.tt=n, auc=n, auc.tt=n, tss=n, tss.tt=n, tssmax=n, tssmax.tt=n, acc=n, acc.tt=n, accmax=n, accmax.tt=n, sens=n, sens.tt=n, spec=n, spec.tt=n, kappa=n, kappa.tt=n, kappamax=n, kappamax.tt=n, rpb=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.1deg=n, r2.abun.1deg=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # tt is for training/testing model
-
+modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, thresh=n, thresh.tt=n, auc=n, auc.tt=n, tss=n, tss.tt=n, tssmax=n, tssmax.tt=n, acc=n, acc.tt=n, accmax=n, accmax.tt=n, sens=n, sens.tt=n, spec=n, spec.tt=n, kappa=n, kappa.tt=n, kappamax=n, kappamax.tt=n, rpb=n, smear=n, pred_obsMedian=n, pred_obsMean=n, pred_obsMedianNosmear=n, pred_obsMeanNosmear=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.survey=n, r2.abun.survey=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # tt is for training/testing model
 
 ## small test to see which species are only marginally present in Newfoundland or WCAnn surveys
 #nosurfregions <- c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn")
@@ -46,87 +46,45 @@ modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, thre
 #nsrspp2 <- which(!(cmax %in% c(5,6,11))) # index for species that didn't have the highest presence count in Newf or WCAnn
 #tab[nsrspp2,] # spp like Clupea harengus are common in many places
 
-
 ######################
 # Start the big loop #
 ######################
 
 #Open pdf to print figures 
-pdf(file=paste("figures/CEmodelGAMsmooths/GAMs_",runname,".pdf",sep=""),width=8,height=6)
+pdf(file=paste("figures/CEmodelGAMsmooths/GAMs_",runname,".pdf",sep=""),width=10,height=10)
 
 options(warn=1) # print warnings as they occur
 allwarnings = NULL
 print(paste(length(allspp), 'models to fit'))
 
-for(i in 1:length(allspp)){ 
+for(i in 1:2){ #length(allspp)){ 
   #for(i in c(18,22,25,27,28)){ # for testing on trouble species
   fittrain = TRUE
-  mygam1tt <- mygam2tt <- mygam1 <- mygam2 <- preds <- preds1 <- preds2 <- predstt <- preds1tt <- preds2tt <- NULL
-  
+  mygam1tt <- mygam2tt <- mygam1 <- mygam2 <- preds <- preds1 <- preds2 <- predstt <- preds1tt <- preds2tt <- NULL # Add 'no smear' preds
+   
   sp<-allspp[i]
   print(paste(i,sp, Sys.time()))
   
   mydat<-dat[dat$sppocean==sp,] 
-  mydat$logwtcpue[is.infinite(mydat$logwtcpue)] <- NA
-  myregions<-unique(mydat$region)
-  myhauls<-unique(mydat$haulid)
-  myseasons<-unique(mydat$season)
-  myocean <- unique(mydat$ocean)
-  
-  
+  myhauls<-unique(mydat$haulid) # MAY NOT BE NEEDED WITH MY MODIFICATION
+   
   ####################################################
-  # Add records for when there was a haul but no fish
-  ####################################################
-  # without season. expand to all regions in the same ocean.
-  zs<-dat[!(dat$haulid %in% myhauls) & dat$ocean %in% myocean,] #extract haulids where this species is missing
-  
-  matchpos<-match(unique(zs$haulid),zs$haulid) # Extract one record of each haulid
-  zeros<-zs[matchpos,]
-  #Add/change relevant columns --> zero catch for target spp.
-  zeros$spp<-mydat$spp[1]
-  zeros$sppl<-mydat$sppl[1]
-  zeros$sppnew<-mydat$sppnew[1]
-  zeros$sppocean<-mydat$sppocean[1] #may need to add "ocean"
-  zeros$wtcpue<-0
-  zeros$logwtcpue <- NA
-  zeros$presfit<-FALSE
-  
-  mydatw0<-rbind(mydat,zeros) #combine positive hauls with zero hauls
-  
-  ##########################################################
-  # Calculate mean catch per haul by region for this taxon #
-  ##########################################################
-  
-  # (For true biomass estimate, would need to stratify the mean)
-  ave.catch.wt<-tapply(mydatw0$wtcpue,list(mydatw0$year,mydatw0$region),mean,na.rm=T)
-  # transform into a data.frame
-  if(dim(ave.catch.wt)[2]<2) { # only one region
-    avecatchyrreg<-cbind(as.data.frame(ave.catch.wt), rep(colnames(ave.catch.wt), dim(ave.catch.wt)[2]), rownames(ave.catch.wt))
-    colnames(avecatchyrreg)<-c("biomassmean","region","year")
-  } else { # multiple regions
-    avecatchyrreg<-cbind(stack(as.data.frame(ave.catch.wt)), rep(rownames(ave.catch.wt), dim(ave.catch.wt)[2]))
-    colnames(avecatchyrreg)<-c("biomassmean","region","year")
-  }
-  spdata<-merge(mydatw0,avecatchyrreg)
-  
-  #Also save average biomassmean for each region (across all years) to use in later predictions.
-  avemeanbiomass<-apply(ave.catch.wt,2,mean,na.rm=T)
-  
-  ####################################################
-  # Trim data to complete cases
+  # Add records for when there was a haul but no fish_note: this changed from previous version, same end product
   ####################################################
   
-  spdata<-spdata[complete.cases(spdata[,c("surftemp","bottemp","rugosity","presfit")]),]
-  spdata <- droplevels(spdata)
-  
-  
+  spdata <- merge(hauls, mydat, by='haulid', all.x = T, sort=F) # Add empty hauls
+  myocean <- head(spdata$ocean[spdata$presfit == TRUE])[1] # identify if this is a Pacific or Atlantic species
+  spdata <- spdata[spdata$ocean == myocean,] # trim master hauls file to the ocean of interest 
+  spdata$presfit[is.na(spdata$presfit)] <- FALSE
+  spdata <- droplevels(spdata) # drop the west coast 'regionfact' levels
+  myregions<-unique(spdata$region) # Not sure if this needs to be where species present or whole ocean_or it may be able to be dropped entirely
+
   ##############################################
   # Set up data in regions with no presences
   ##############################################
   spdata$logwtcpue.pad <- spdata$logwtcpue # has some zeros changed to -18 to allow abundance model fitting
   spdata$presfit.pad <- spdata$presfit # has some FALSE changed to TRUE to allow abundance model fitting
-  
-  
+   
   npres <- table(spdata$regionfact[spdata$presfit])
   if(any(npres < 1)){
     mywarn <- paste('Zero presences for', i, sp, 'in', paste(names(npres)[npres<1], collapse=', '))
@@ -146,9 +104,8 @@ for(i in 1:length(allspp)){
       print(paste(regstofill[j], ': Added', length(fake0s), 'fake zeros'))
     }
   }
-  
+  # MAY WANT TO CHANGE THE ABOVE, AS FOR RARE SPECIES, A MAJORITY OF THE PRESENCES END UP BEING THESE FAKE -23 VALUES, MAYBE FURTHER ADJUST fake0s BY FREQUENCY OF CAPTURE SOMEHOW?????
   spdata <- droplevels(spdata)
-  
   
   ####################################################
   #Set up data for training and testing to evaluate performance
@@ -168,7 +125,7 @@ for(i in 1:length(allspp)){
   # indices for only where present (for the abundance model), including fake zeros
   trainindsp <- intersect(traininds, which(spdata$presfit.pad))
   testindsp <- intersect(testinds, which(spdata$presfit.pad))
-  
+   
   # warn if too few presences overall
   if(length(trainindsp)<2){
     mywarn <- paste('Only', length(trainindsp), 'presence values in training dataset for', i, sp)
@@ -195,10 +152,10 @@ for(i in 1:length(allspp)){
     allwarnings <- c(allwarnings, mywarn)
     warning(mywarn)
   }
-  
+
   # make sure we have at least 6 unique levels for each variable (necessary to fit gam with 4 knots)
-  # look at training presence indices, since the most constraining (for mygam2tt)
-  levs <- apply(spdata[trainindsp,c('bottemp', 'surftemp', 'logrugosity', 'biomassmean')], 2, FUN=function(x) length(unique(x)))
+  # look at training presence indices, since the most constraining (for mygam2tt)_SHOULD THIS BE TESTING? B/C IT'S THE SMALLER DATA SET
+  levs <- apply(spdata[trainindsp,c('SBT.seasonal', 'SST.seasonal.mean', 'SBT.min', 'SBT.max', 'SST.max', 'rugosity', 'GRAINSIZE')], 2, FUN=function(x) length(unique(x)))
   if(any(levs < 6)){
     mywarn <- paste("Not enough (>=6) unique levels in training presence set for", i, sp, ". Won't fit training models")
     allwarnings <- c(allwarnings, mywarn)
@@ -210,51 +167,53 @@ for(i in 1:length(allspp)){
   ####################################################
   # Figure out which model formula given data
   ####################################################
-  
+   
   #Default models. Leave out region factor if necessary
   # since fitallreg, using all regions in an ocean
-  # note that biomassmean is now linear (not smoothed)
   if(length(levels(spdata$regionfact))==1){
-    mypresmod<-formula(presfit ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+biomassmean)
-    myabunmod<-formula(logwtcpue.pad ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+biomassmean)
-    mynullpresmod<-formula(presfit ~ s(logrugosity,k=4)+biomassmean) #Null model w/o temp
-    mynullabunmod<-formula(logwtcpue.pad ~ s(logrugosity,k=4)+biomassmean) #Null model w/o temp
+    mypresmod<-formula(presfit ~ s(SBT.seasonal) + s(SST.seasonal.mean) + s(SBT.min) + s(SBT.max) + s(SST.max) + s(rugosity) + s(GRAINSIZE) + habitatFact-1)
+    myabunmod<-formula(logwtcpue.pad ~ s(SBT.seasonal) + s(SST.seasonal.mean) + s(SBT.min) + s(SBT.max) + s(SST.max) + s(rugosity) + s(GRAINSIZE) + habitatFact-1)
+    mynullpresmod<-formula(presfit ~ s(rugosity) + s(GRAINSIZE) + habitatFact-1) #Null model w/o temp
+    mynullabunmod<-formula(logwtcpue.pad ~ s(rugosity) + s(GRAINSIZE) + habitatFact-1) #Null model w/o temp
   } else {
-    mypresmod<-formula(presfit ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+regionfact+biomassmean-1)
-    myabunmod<-formula(logwtcpue.pad ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+regionfact+biomassmean-1)
-    mynullpresmod<-formula(presfit ~ s(logrugosity,k=4)+regionfact+biomassmean-1) #Null model w/o temp
-    mynullabunmod<-formula(logwtcpue.pad ~ s(logrugosity,k=4)+regionfact+biomassmean-1) #Null model w/o temp
+    mypresmod<-formula(presfit ~ s(SBT.seasonal) + s(SST.seasonal.mean) + s(SBT.min) + s(SBT.max) + s(SST.max) + s(rugosity) + s(GRAINSIZE) + habitatFact + regionfact -1)
+    myabunmod<-formula(logwtcpue.pad ~ s(SBT.seasonal) + s(SST.seasonal.mean) + s(SBT.min) + s(SBT.max) + s(SST.max) + s(rugosity) + s(GRAINSIZE) + habitatFact + regionfact -1)
+    mynullpresmod<-formula(presfit ~ s(rugosity) + s(GRAINSIZE) + habitatFact + regionfact -1) #Null model w/o temp
+    mynullabunmod<-formula(logwtcpue.pad ~ s(rugosity) + s(GRAINSIZE) + habitatFact + regionfact -1) #Null model w/o temp
   }
-  
   
   ####################################	
   # Fit the training/testing models
   ####################################	
   
-  # We could use select=TRUE so that terms can be smoothed out of the model (a model selection algorithm),
+  # set 'gamma' penalty levels for gam to prevent overfitting_got this from a presentation by Simon Wood (https://people.maths.bris.ac.uk/~sw15190/mgcv/tampere/mgcv-advanced.pdf)
+  gammaPA <- log(nrow(spdata[traininds,])) / 2
+  gammaAbun <- log(nrow(spdata[trainindsp,])) / 2
+  # I don't fully understand how this block works (Jim)
   if(fittrain){
     try1 <- tryCatch({
-      mygam1tt<-gam(mypresmod, family="binomial",data=spdata[traininds,]) 
-      mygam2tt<-gam(myabunmod, data=spdata[trainindsp,]) # only fit where species is present
+      mygam1tt<-gam(mypresmod, family="binomial",data=spdata[traininds,], select=TRUE, gamma=gammaPA) 
+      mygam2tt<-gam(myabunmod, data=spdata[trainindsp,], select=TRUE, gamma=gammaAbun) # only fit where species is present
     }, error = function(e) { # ignore warnings, since no function to catch them
       mywarn <- paste('Error in training gam fitting for', i, sp, ':', e)
-      assign('allwarnings', c(get('allwarnings', envir=.GlobalEnv), mywarn), envir=.GlobalEnv) # these assigns outside the local scope are poor form in R. But not sure how else to do it here...
+      assign('allwarnings', c(get('allwarnings', envir=.GlobalEnv), mywarn), envir=.GlobalEnv) # these assign outside the local scope are poor form in R. But not sure how else to do it here...
       assign('fittrain', FALSE, envir=.GlobalEnv) # if we hit an error in predictions, we can't calculate performance stats
       warning(mywarn)
     })
   }
-  
-  
-  
+   
   ####################################################
   #Fit models to All data (no test/training split)
   ####################################################
   
+  gammaPA <- log(nrow(spdata)) / 2
+  gammaAbun <- log(nrow(spdata[spdata$presfit.pad,])) / 2
+  
   try2 <- tryCatch({
-    mygam1<-gam(mypresmod,family="binomial",data=spdata)
-    mygam2<-gam(myabunmod,data=spdata[spdata$presfit.pad,], na.action='na.exclude') # only fit where spp is present
-    mygam1null<-gam(mynullpresmod,family="binomial",data=spdata)
-    mygam2null<-gam(mynullabunmod,data=spdata[spdata$presfit.pad,]) # only fit where spp is present
+    mygam1<-gam(mypresmod,family="binomial",data=spdata, select=TRUE, gamma=gammaPA)
+    mygam2<-gam(myabunmod,data=spdata[spdata$presfit.pad,], na.action='na.exclude', select=TRUE, gamma=gammaAbun) # only fit where spp is present
+    mygam1null<-gam(mynullpresmod,family="binomial",data=spdata, select=TRUE, gamma=gammaPA)
+    mygam2null<-gam(mynullabunmod,data=spdata[spdata$presfit.pad,], select=TRUE, gamma=gammaAbun) # only fit where spp is present
     
   }, error = function(e) {
     mywarn <- paste('Error in gam fitting for', i, sp, ':', e)
@@ -262,32 +221,30 @@ for(i in 1:length(allspp)){
     warning(mywarn)
   })
   
-  
   ####################################################
   # Plot gam smooths to check for unrealistic out-of-range responses 
   ####################################################
   
-  #Should write out to PDF
-  plot(mygam1,pages=1,scale=0,all.terms=TRUE);mtext(paste(sp,"presence"),outer=T,line=-2)
-  plot(mygam2,pages=1,scale=0,all.terms=TRUE);mtext(paste(sp,"abundance"),outer=T,line=-2)
-  
+  freq <- mean(spdata$Freq, na.rm=T) # Number of true presences
+  plot(mygam1,pages=1,scale=0,all.terms=TRUE, shade=T);mtext(paste(sp,"presence", "  ", freq, "true presences"),outer=T,line=-2)
+  plot(mygam2,pages=1,scale=0,all.terms=TRUE, shade=T);mtext(paste(sp,"abundance", "  ", freq, "true presences"),outer=T,line=-2)
   
   ####################################################
   # Compare predictions to observations to assess model performance
   ####################################################
-   
+    
   # For FULL model
   preds1 <- mygam1$fitted.values
-  # NEED to SUBTRACT 1 HERE IF WE GO WITH LOGCPUE +1_ SAME ON LINE 295
   preds2 <- exp(predict(mygam2, newdata = spdata, type='response', na.action='na.pass')) # abundance predictions
   smear = mean(exp(mygam2$residuals)) # smearing estimator for re-transformation bias (see Duan 1983, http://www.herc.research.va.gov/include/page.asp?ID=cost-regression)
   preds <- preds1*preds2*smear # adds the bias correction as well
+  preds.nosmear <- preds1*preds2 # without the smear value_just for comparison
   preds[preds<0] = 0
   
   # And for training/testing data set
   if(fittrain){
     try3 <- tryCatch({
-      preds1tt <- predict(mygam1tt,spdata[testinds,],type="response") 
+      preds1tt <- predict(mygam1tt, newdata = spdata[testinds,], type="response") 
       preds2tt <- exp(predict(mygam2tt, newdata = spdata[testinds,], type='response'))
       smear = mean(exp(mygam2tt$residuals)) # smearing estimator for re-transformation bias (see Duan 1983, http://www.herc.research.va.gov/include/page.asp?ID=cost-regression)
       predstt <- preds1tt*preds2tt*smear
@@ -299,7 +256,7 @@ for(i in 1:length(allspp)){
       warning(mywarn)
     })
   }
-  
+   
   # fill in diagnostics
   modeldiag$sppocean[i] = sp
   modeldiag$npres[i] = sum(spdata$presfit)
@@ -307,23 +264,22 @@ for(i in 1:length(allspp)){
     modeldiag$npres.tr[i] = sum(spdata$presfit[traininds])
     modeldiag$npres.te[i] = sum(spdata$presfit[testinds])
   }
-  modeldiag$ntot[i] = dim(spdata)[1]
-  # fill in myregions and myseasons too? would be useful for projections
-  
+  modeldiag$ntot[i] = dim(spdata)[i]
+
   # evaluate model (use dismo package)
   # pick a threshold for pres/abs model evaluation (where needed)
   e <- evaluate(p=as.vector(preds1[spdata$presfit]), a=as.vector(preds1[!spdata$presfit]))
   modeldiag$thresh[i] <- threshold(e, stat='prevalence')
   e.ind <- which(e@t == modeldiag$thresh[i]) # index for the chosen threshold
   conf <- as.data.frame(e@confusion) # confusion matrices (all thresholds)
-  
+   
   if(length(testindsp)>0 & fittrain){ # need presences in the test dataset
     e.tt <- evaluate(p=as.vector(preds1tt[spdata$presfit[testinds]]), a=as.vector(preds1tt[!spdata$presfit[testinds]]))
     modeldiag$thresh.tt[i] <- threshold(e.tt, stat='prevalence') # for testing/training
     e.ind.tt <- which(e.tt@t == modeldiag$thresh.tt[i]) # index for the chosen threshold
     conf.tt <- as.data.frame(e.tt@confusion) # confusion matrices (all thresholds)
   }
-  
+   
   # pres/abs model diagnostics (no threshold needed)
   modeldiag$dev.pres[i] = summary(mygam1)$dev.expl
   modeldiag$auc[i] <- e@auc
@@ -338,7 +294,7 @@ for(i in 1:length(allspp)){
     modeldiag$accmax.tt[i] <- max(with(conf.tt, (tp+tn)/(tp+fp+fn+tn)), na.rm=TRUE) # maximum overall accuracy
     modeldiag$kappamax.tt[i] <- max(e.tt@kappa, na.rm=TRUE) # maximum kappa
   }
-  
+   
   # true skill statistic, accuracy, kappa, and other stats that require a threshold
   modeldiag$tss[i] = 	with(conf[e.ind,], (tp*tn - fn*fp)/((tp+fp)*(fn+tn))) # TSS for chosen threshold
   modeldiag$acc[i] = 	with(conf[e.ind,], (tp+tn)/(tp+fp+fn+tn)) # overall accuracy
@@ -352,31 +308,31 @@ for(i in 1:length(allspp)){
     modeldiag$spec.tt[i] = with(conf.tt[e.ind.tt,], (tn)/(tn+fp)) # specificity: fraction of correctly predicted absences
     modeldiag$kappa.tt[i] = e.tt@kappa[e.ind.tt]
   }
-  
+   
   # abundance model diagnostics
   modeldiag$dev.biomass[i] = summary(mygam2)$dev.expl
-  modeldiag$r2.biomass[i] = cor(log(preds2[spdata$presfit]), spdata$logwtcpue[spdata$presfit])^2 # correlation of log(biomass) where present
+  modeldiag$r2.biomass[i] = cor(log(preds2[spdata$presfit & !is.na(spdata$wtcpue)]), spdata$logwtcpue[spdata$presfit & !is.na(spdata$wtcpue)])^2 # correlation of log(biomass) where present_need to remove NAs as some species have a few
   if(length(testindsp)>0 & fittrain){
     modeldiag$r2.biomass.tt[i] = cor(preds2tt[which(testinds %in% testindsp)], spdata$logwtcpue[testindsp])^2 # only if presences exist in the test dataset
   }
-  
+   
   # full model diagnostics
-  modeldiag$r2.all[i] = cor(preds, spdata$wtcpue)^2 # overall biomass correlation
+  spdata$wtcpue[spdata$presfit == FALSE] <- 0 
+  modeldiag$r2.all[i] = cor(preds[!is.na(spdata$wtcpue)], spdata$wtcpue[!is.na(spdata$wtcpue)])^2 # overall biomass correlation
   if(length(testindsp)>0 & fittrain) modeldiag$r2.all.tt[i] = cor(predstt, spdata$wtcpue[testinds])^2 # overall biomass correlation. only makes sense to do this if the species is present at least once in the testing dataset
   
   #Compare to models without temperature to ultimately calculation %explained by temp terms
   modeldiag$dev.pres.null[i] = summary(mygam1null)$dev.expl
   modeldiag$dev.biomass.null[i] = summary(mygam2null)$dev.expl
   
-  # Some metrics at a spatially aggregated level (1x1deg square) (by year) may be more informative:
   test<-cbind(spdata,preds1,preds)
-  t1<-tapply(test$preds1,list(test$year,test$cs1),mean) #average predicted p(occur)
-  t2<-tapply(test$presfit,list(test$year,test$cs1),mean) #proportion of hauls with presence
-  t3<-tapply(test$preds,list(test$year,test$cs1),mean) #average predicted abundance
-  t4<-tapply(test$wtcpue,list(test$year,test$cs1),mean) #average observed abundance
+  t1<-tapply(test$preds1,list(test$year,test$surveyfact),mean) #average predicted p(occur)
+  t2<-tapply(test$presfit,list(test$year,test$surveyfact),mean) #proportion of hauls with presence
+  t3<-tapply(test$preds,list(test$year,test$surveyfact),mean) #average predicted abundance
+  t4<-tapply(test$wtcpue,list(test$year,test$surveyfact),mean) #average observed abundance
   
   presr2<-round(cor(stack(as.data.frame(t2))[,1],stack(as.data.frame(t1))[,1],use="p")^2,2)
-  abunr2<-round(cor(stack(as.data.frame(t4))[,1],(stack(as.data.frame(t3))[,1]),use="p")^2,2)
+  abunr2<-round(cor(stack(as.data.frame(t4))[,1],stack(as.data.frame(t3))[,1],use="p")^2,2)
   #par(mfrow=c(1,2))
   #plot(stack(as.data.frame(t2))[,1],stack(as.data.frame(t1))[,1],xlab="Proportion of hauls with species present (by 1 deg square)",ylab="Mean predicted probability of occurrence", cex=0.5,main=sp)
   #mtext(paste("r^2 =",presr2))
@@ -390,11 +346,11 @@ for(i in 1:length(allspp)){
   #### Save models for later projections
   ####################################################
   
-  mods = list(mygam1=mygam1, mygam2 = mygam2)
+  mods = list(mygam1 = mygam1, mygam2 = mygam2)
   
   sp <- gsub('/', '', sp) # would mess up saving the file
   
-  save(mods, avemeanbiomass, myregions, file=paste(modfolder, 'CEmods_',runname, '_', sp, '.RData', sep='')) # ~4mb file
+  save(mods, myregions, file=paste(modfolder, 'CEmods_',runname, '_', sp, '.RData', sep='')) # ~4mb file
   
   #think about figures to output - thermal response curves? spatial prediction by 1 deg square?
   #think about other data to save - number of pres/abs by region (?) 
