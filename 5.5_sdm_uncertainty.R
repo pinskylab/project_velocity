@@ -31,7 +31,7 @@ options(warn=1) # print warnings as they occur
 
 n = rep(NA, length(allspp))
 modeldiag = data.frame(sppocean=n, npres=n, ntot=n, smear=n, pred_obsMedian=n, pred_obsMean=n, pred_obsMedianNosmear=n, pred_obsMeanNosmear=n, thresh=n, auc=n, tss=n, tssmax=n, acc=n, accmax=n, sens=n, spec=n, kappa=n, kappamax=n, rpb=n, r2.biomass=n, r2.all=n, r2.pres.survey=n, r2.abun.survey=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE)
-
+  
 for(i in 1:length(allspp)){ 
   sp <- allspp[i]
   ocean <- oceans[i]  
@@ -171,6 +171,11 @@ for(i in 1:length(allspp)){
   modeldiag$r2.abun.survey[i]<-abunr2
     
   # ESTIMATING MODEL UNCERTAINTY ====================================================================================================
+  
+  # FOR DECLARING SOMETHING 'SUITABLE HABITAT' FOR MAPPING, SAY ANYTHING THAT IS ABOVE THE FACTOR LEVEL EFFECT FOR THE REGION USED FOR PREDICTION
+  # THAT WOULD MEAN THAT THE CLIMATE/BATHYMETRY OF THAT CELL HAS A POSITIVE EFFECT ON CATCH
+  # THE IS BARING IN MIND AS THOSE FACTOR LEVEL EFFECTS ARE BASICALLY CRUDE AVERAGE WTCPUE, ALTHOUGH I THINK THE EFFECT VALUE INTERACTS WITH THE HABITAT FACTOR TO SOME EXTENT
+  
   pd <- proj.grid 
   pd$rugosity <- log(pd$rugosity + 1)
   # Below some arbitrary space fillers while I'm waiting for climate files to be completed

@@ -12,9 +12,9 @@ proj_ranges.Rproj
 #*.gz
 *.nc
 #*.csv
-#*.txt
+*.txt
 #*.xls
-
+*.tar
 #*.pdf
 #*.docx
 

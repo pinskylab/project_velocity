@@ -3,11 +3,11 @@ library(ggplot2)
 library(lattice)
 library(maps)
 setwd('/Users/jamesmorley/Documents/project_velocity')
-  
+   
 # Import master hauls file and sediment data
 load('data/haulInfo_course_Feb8_2017.RData') # load all haul info data_with 1/20 resolution for bathymetry
 sediment <- readRDS('data/benthic_hab_hauls.rds') # updated hauls data with sediment variables and Halpern (hard/soft) designation
-
+ 
 # Merge in sediment variables to master hauls file
 hauls <- merge(haulsTest, sediment[,c('haulid', 'GRAINSIZE', 'GRAVEL', 'SAND', 'MUD', 'habitat')], by='haulid', all.x=T, sort=F)
 rm(sediment, haulsTest)
@@ -68,7 +68,7 @@ hauls$regionfact <- as.factor(hauls$region) # the version to use for models
 hauls$rugosity <- log(hauls$tri + 1)
 
 # drop 1932 rows with missing predictor values_gams drop rows missing predictor values
-hauls <- hauls[complete.cases(hauls$rugosity, hauls$SBT.seasonal, hauls$habitatFact, hauls$GRAINSIZE),] # the multiple sediment and SODA variables have the same NA rows (within each of those two categories) 
+hauls <- hauls[complete.cases(hauls$rugosity, hauls$SBT.seasonal, hauls$GRAINSIZE),] # the multiple sediment and SODA variables have the same NA rows (within each of those two categories) 
 
 hauls$ocean[hauls$region %in% c("AFSC_Aleutians", "AFSC_EBS", "AFSC_GOA", "AFSC_WCTri", "NWFSC_WCAnn")] <- "Pac"
 hauls$ocean[hauls$region %in% c("DFO_Newfoundland", "DFO_ScotianShelf","DFO_SoGulf","NEFSC_NEUS", "SCDNR_SEUS", "SEFSC_GOMex", "VIMS_NEAMAP")] <- "Atl"
