@@ -100,7 +100,6 @@ length(projspp)
 # Prep environmental data
 #################################
  
-# Malin, THIS IS CURRENTLY SET UP TO GET THE CLIMATE PROJECTION DATA WORKING_WILL MODIFY ONCE THAT IS WORKING
 load('data/projectionGrid_Feb24_2017.RData')# load projection grid to get lat/lon values
 clim.grid <- proj.grid # rename as a different 'proj.grid' imported below with bathymetry
 rm(proj.grid)
@@ -110,34 +109,81 @@ nrow(unique(clim.grid)) # 13,637 unique lat/lon cells for projections_same as nr
 rcp <- 85 
 #rcp <- 26
 pred.folder <- c('sst_rcp85/tos_Omon_','sst_rcp26/tos_Omon_','sbt_rcp85/temp_btm_1950_2100_','sbt_rcp26/temp_btm_1950_2100_')
-i = 1
 modelrun <- c('bcc-csm1-1-m','bcc-csm1-1','CanESM2','CCSM4','CESM1-CAM5','CNRM-CM5','GFDL-CM3','GFDL-ESM2M','GFDL-ESM2G','GISS-E2-R','GISS-E2-H','IPSL-CM5A-LR','IPSL-CM5A-MR','MIROC-ESM','MPI-ESM-LR','NorESM1-ME')
-j = 2
 pred.season <- c('jfm','amj','jas','ond')
-k = 4
 pred.metric <- c('max', 'min', 'mean')
-l = 1
-# THE SURFACE VS. BOTTOM TEMP FILES ARE NAMED SLIGHTLY DIFFERENT, SO THIS CONDITIONAL STATEMENT NEEDED FOR MAKING filename
-if(pred.folder[i] == 'sst_rcp85/tos_Omon_' | pred.folder[i] == 'sst_rcp26/tos_Omon_'){
-  filename = paste('data/', pred.folder[i], modelrun[j], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_2006_2100_', pred.season[k],'_', pred.metric[l], '.txt', sep="")
-} else{
-  filename = paste('data/', pred.folder[i], modelrun[j], '_rcp', rcp, '_regrid.nc_2006_2100_', pred.season[k],'_', pred.metric[l], '.txt', sep="")
-}
- 
-# NEED TO VARY nrows AND col.names TO GET TO READ IN, DEPENDING ON FILE
-temps <- read.table(filename, sep="", nrows=1588, col.names = c(2006:2100))#, 
 
-# 1. Some files have nothing but rows of '........' at the files beginning, e.g.:
-filename <- "data/sbt_rcp85/temp_btm_1950_2100_GFDL-CM3_rcp85_regrid.nc_2006_2100_jas_mean.txt" # This may be the case for all the GFDL models.....maybe they lack those cells? 
-# 2. Many/all of the files appear to have far too many rows_The total rows should match clim.grid, e.g.:
-filename <- "data/sbt_rcp85/temp_btm_1950_2100_bcc-csm1-1-m_rcp85_regrid.nc_2006_2100_jas_mean.txt"
-# 3. The above file also appears to only have 94 columns, when it sould be 95 (2006-2100)_however, other files do have 95 columns, e.g.:
-filename <- "data/sst_rcp85/tos_Omon_bcc-csm1-1-m_rcp85_r1i1p1_1950_2100.nc_regrid.nc_2006_2100_jas_max.txt"
-# 4. For many/all the files, the number of columns appears to change at some point in the file_as reading in the data produces an error unless you specify 'nrows' to be less than where the error occurs
-      # This may be due to sections in the .txt that are rows of '..........', I saw this in all of the text files when I opened them and scrolled down
-# 5. In some of the .txt files, when I opened them in text editor, I saw a change at some point in the amount of white space separating columns/rows_not sure if that throws things off 
-      # it seems initially that columns are separated by 2 spaces and rows by 4 spaces.
-# 6. I saw some unrealistic values_although I can't seem to find an example right now_that will be easier to assess when everything is read in
+processlines <- function(x){
+  if(grepl('.....', x, fixed=TRUE)){
+    return(rep(as.numeric(NA), 94))
+  } else {
+    x <- sub('^ +', '', x) # remove leading whitespace
+    return(as.numeric(unlist(strsplit(x, split=' +'))))
+  }
+}
+
+# For reading in all models for a particular type of data, I’m using:
+i=3; k=3; l=3 # sbt_rcp85, ond, mean
+temps <- array(as.numeric(NA), dim=c(13637,94,length(modelrun)), dimnames=list(grid=1:13637, year=1:94, model=1:length(modelrun)))
+for(j in 1:length(modelrun)){
+  print(j)
+  # THE SURFACE VS. BOTTOM TEMP FILES ARE NAMED SLIGHTLY DIFFERENT, SO THIS CONDITIONAL STATEMENT NEEDED FOR MAKING filename
+  if(pred.folder[i] == 'sst_rcp85/tos_Omon_' | pred.folder[i] == 'sst_rcp26/tos_Omon_'){
+    filename = paste('data/', pred.folder[i], modelrun[j], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_2006_2100_', pred.season[k],'_', pred.metric[l], '.txt', sep="")
+  } else{
+    filename = paste('data/', pred.folder[i], modelrun[j], '_rcp', rcp, '_regrid.nc_2006_2100_', pred.season[k],'_', pred.metric[l], '.txt', sep="")
+  }
+  # filename = paste('data/', pred.folder[i], modelrun[j], '_rcp', rcp,'_regrid.nc_2006_2100_', pred.season[k],'_', pred.metric[l], '.txt', sep="")
+  filein <- readLines(filename)
+  temps[,,j] <- t(sapply(filein, processlines))
+}
+  
+# Graph up some temperature projection values
+library(lattice); library(RColorBrewer)
+# Take a look at some temperature values_I recycle this (with the above) code to look at different combinations of model, year, etc.
+summary(temps[,,12])
+abc <- data.frame(cbind(temps[,,12], clim.grid))
+
+nrow(abc[!is.na(abc$X74),]) # how many total rows of data
+
+plot(latgrid~longrid, data=abc[!is.na(abc$X74),])
+points(latgrid~longrid, col='red', data=abc[abc$X74 > 160, ])
+points(latgrid~longrid, col='green', data=abc[abc$X74 < -19, ])
+# another plot option
+forPlot <- abc$X74# choose a given year to work with the plots_this is only necessary for establishing the cutpoints
+cutpts <- c(min(forPlot, na.rm=T)-1, -10, -5, 40, 80, max(forPlot, na.rm=T)+1) # add some cutpoints to show outliers_gray is relatively normal, with two levels of both negative and positive outliers
+levelplot(X74 ~ longrid * latgrid, data = abc[!is.na(abc$X74),], at = cutpts, cuts = 6, pretty = T, col.regions = (rev(brewer.pal(9, "RdBu")))) 
+
+# ===========================================
+# Malin's code for looking at empty cells
+# ===========================================
+
+# how much data do we have? (need array from previous code block)
+modeldat <- apply(temps, MARGIN=c(1,3), FUN = function(x) all(!is.na(x))) # whether or not a model has data at each grid cell
+colnames(modeldat) <- modelrun
+t(t(colSums(modeldat))) # how many grid cells covered by each model
+
+# how many models have data at each grid cell?
+nmodeldat <- rowSums(modeldat)
+
+hist(nmodeldat, breaks=seq(-0.5, 16.5, by=1))
+sum(nmodeldat==16)
+sum(nmodeldat>=13) # 9479
+sum(nmodeldat>=10) # 11736
+
+# how many models have data at each grid cell? W/OUT GFDL or Can
+keep <- !grepl('GFDL', modelrun)
+keep <- !grepl('GFDL|CanESM', modelrun)
+sum(keep)
+nmodeldat <- rowSums(modeldat[, keep])
+
+hist(nmodeldat, breaks=seq(-0.5, 16.5, by=1))
+sum(nmodeldat>=13)
+sum(nmodeldat>=12) 
+sum(nmodeldat>=10)
+
+dim(temps)
+
 
 # =================================================================================
 # =================================================================================
