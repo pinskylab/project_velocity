@@ -72,11 +72,27 @@ for(j in 1:length(modelrun)){
 # how much data do we have? (need array from previous code block)
 modeldat <- apply(temps, MARGIN=c(1,3), FUN = function(x) all(!is.na(x))) # whether or not a model has data at each grid cell
 colnames(modeldat) <- modelrun
-nmodeldat <- rowSums(modeldat) # how many models have data at each grid cell
+t(t(colSums(modeldat))) # how many grid cells covered by each model
 
-hist(nmodeldat, breaks=seq(-0.5, 16.5, by=1))
-	sum(nmodeldat==16)
-	sum(nmodeldat>=13) # 9479
-	sum(nmodeldat>=10) # 11736
+	# how many models have data at each grid cell?
+	nmodeldat <- rowSums(modeldat)
+
+	hist(nmodeldat, breaks=seq(-0.5, 16.5, by=1))
+		sum(nmodeldat==16)
+		sum(nmodeldat>=13) # 9479
+		sum(nmodeldat>=10) # 11736
+
+	# how many models have data at each grid cell? W/OUT GFDL or Can
+	keep <- !grepl('GFDL', modelrun)
+	keep <- !grepl('GFDL|CanESM', modelrun)
+		sum(keep)
+	nmodeldat <- rowSums(modeldat[, keep])
+
+	hist(nmodeldat, breaks=seq(-0.5, 16.5, by=1))
+		sum(nmodeldat>=13)
+		sum(nmodeldat>=12) 
+		sum(nmodeldat>=10)
+
+
 
 dim(temps)
