@@ -18,13 +18,13 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	}
 
 # Load model evaluations
-modeldiag <- read.csv('output/modeldiag_nonstationarity_projection2.csv')
+modeldiag <- read.csv('output/modeldiag_nonstationarity_projection2_1960+1970.csv')
 
 # Trim out species with no models, and poor models
 modeldiag <- modeldiag[!is.na(modeldiag$ntot),] # no model was fit
 keepspp <- modeldiag$sppocean[modeldiag$decade==1960 & modeldiag$auc >= 0.7 & modeldiag$tss>=0.3]
 length(sort(unique(modeldiag$sppocean))) # 79 spp with models fit
-length(keepspp) # 23 spp to keep
+length(keepspp) # 23 spp to keep (1960), 26 (1960+1970)
 modeldiag <- modeldiag[modeldiag$sppocean %in% keepspp,]
 
 ##########################################
@@ -35,7 +35,7 @@ spp <- sort(unique(modeldiag$sppocean[!is.na(modeldiag$auc)]))
 # On individual points
 col=rgb(0, 0, 0, 0.2)
 quartz(width=12, height=9)
-# pdf(width=12, height=9, file='figures/nonstationarity_projection2.pdf')
+# pdf(width=12, height=9, file='figures/nonstationarity_projection2_1960+1970.pdf')
 par(mfrow=c(3,4))
 	# auc
 with(modeldiag[modeldiag$sppocean==spp[1],], plot(decade, auc, type='l', col=col, ylim=c(0,1)))
