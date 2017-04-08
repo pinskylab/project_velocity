@@ -34,7 +34,7 @@ library(dismo) # used for model evaluation
 # Load data
 load('data/master_hauls_March7_2017.RData') # import master hauls file
 load('data/dat_selectedspp_Feb_1_2017.Rdata')# load species catch data
-load('data/ProjectionBathGrid_Feb27_2017.RData')# load projection grid (temporary until we receive climate projection data)
+#load('data/ProjectionBathGrid_Feb27_2017.RData')# load projection grid (temporary until we receive climate projection data)
 
 # Trim only to NEFSC for the non-stationarity test
 dat <- dat[dat$region %in% c('NEFSC_NEUSSpring', 'NEFSC_NEUSFall'),]
@@ -61,12 +61,15 @@ dat$logwtcpue <- log(dat$wtcpue)
 # Removed cols are already in master hauls file, which will be merged in below with the hauls data
 dat <- data.frame(haulid = dat$haulid, sppocean = dat$sppocean, Freq = dat$Freq, wtcpue = dat$wtcpue, logwtcpue = dat$logwtcpue, presfit = TRUE, stringsAsFactors = F)
 
+# Classify decades
+hauls$decade <- floor(hauls$year/10)*10
+hauls$decade[hauls$decade==1970] <- 1960 # merge 1960s and 1970s (not much data in 1960s)
 
 # Extract species
 allspp = sort(unique(dat$sppocean))
 
 # set up dataframe to hold model diagnostics
-decs <- sort(unique(floor(hauls$year/10)*10))
+decs <- sort(unique(hauls$decade))
 n = NA
 modeldiag = expand.grid(decade=decs, sppocean=allspp)
 modeldiag <- merge(modeldiag, data.frame(ntot=n, npres=n, thresh=n, dev.pres=n, tss=n, acc=n, sens=n, spec=n, kappa=n, auc=n, tssmax=n, accmax=n, kappamax=n, rpb=n, thresh.gr=n, dev.pres.gr=n, tss.gr=n, acc.gr=n, sens.gr=n, spec.gr=n, kappa.gr=n, auc.gr=n, tssmax.gr=n, accmax.gr=n, kappamax.gr=n, rpb.gr=n, stringsAsFactors=FALSE))
@@ -77,7 +80,7 @@ modeldiag <- merge(modeldiag, data.frame(ntot=n, npres=n, thresh=n, dev.pres=n, 
 ######################
 
 #Open pdf to print figures 
-pdf(file=paste("figures/GAMs_nonstationarity_projection.pdf",sep=""),width=8,height=6)
+pdf(file=paste("figures/GAMs_nonstationarity_projection_1960+1970.pdf",sep=""),width=8,height=6)
 
 options(warn=1) # print warnings as they occur
 allwarnings = NULL
@@ -126,45 +129,38 @@ for(i in 1:length(allspp)){
 	haulsMod$presfit[is.na(haulsMod$presfit)] <- FALSE
 	spdata <- droplevels(haulsMod) # drop the west coast 'regionfact' levels
 
-
-	####################################################
-	# Trim data to complete cases
-	####################################################
-
-#	spdata<-spdata[complete.cases(spdata[,c("surftemp","bottemp","rugosity","presfit")]),]
-#	spdata <- droplevels(spdata)
-
-
-	###############################################################
-	#Set up data by decade to test for non-stationarity
-	###############################################################
-
 	#Order by time
 	spdata<-spdata[order(spdata$year,spdata$month),]
-
-	# set up the decades
-	spdata$decade <- floor(spdata$year/10)*10
-	if(sum(is.na(spdata$decade))>0){ # should assign every row to a decade
-		mywarn <- paste('Some decades undefined for', i, sp)
-		allwarnings <- c(allwarnings, mywarn)
-		warning(mywarn)
-	}
 
 
 	##############################################################
 	# Check that we have enough data for fitting GAMs
 	##############################################################
 
+	# check the decades
+	if(sum(is.na(spdata$decade))>0){ # should assign every row to a decade
+		mywarn <- paste('Some decades undefined for', i, sp)
+		allwarnings <- c(allwarnings, mywarn)
+		warning(mywarn)
+	}
+	
+
 	# make sure at least 10 presences in fitting decade
 	ninds <- table(spdata$presfit, spdata$decade)
-	if(!('TRUE' %in% rownames(ninds))){ # means no presences!
-		mywarn <- paste('Not enough presences in 1960s for', i, sp)
+	if(!('TRUE' %in% rownames(ninds))){ # means no presences ever!
+		mywarn <- paste('Not enough presences at all for', i, sp)
 		allwarnings <- c(allwarnings, mywarn)
 		warning(mywarn)
 		fittrain = FALSE
 	} else {
-		if(ninds['TRUE','1960'] < 10){ # if some presences, makes sure enough
-			mywarn <- paste('Not enough presences in 1960s for', i, sp)
+		if(ninds['TRUE','1960'] < 10){ # if some presences, makes sure enough for fitting in 1960
+			mywarn <- paste('Not >=10 presences in 1960s for', i, sp)
+			allwarnings <- c(allwarnings, mywarn)
+			warning(mywarn)
+			fittrain = FALSE		
+		}
+		if(any(ninds['TRUE',] < 4)){ # if some presences, makes sure enough in any decade for evaluation
+			mywarn <- paste('Not >=4 presence in all decades for', i, sp)
 			allwarnings <- c(allwarnings, mywarn)
 			warning(mywarn)
 			fittrain = FALSE		
@@ -186,7 +182,7 @@ for(i in 1:length(allspp)){
 	####################################################
 
 	#Default models. Leave out region factor since only NEFSC
-	mypresmod<-formula(presfit ~ s(SBT.seasonal) + s(SST.seasonal.mean) + s(SBT.min) + s(SBT.max) + s(SST.max) + s(rugosity) + s(GRAINSIZE) + habitatFact - 1) # no regionfact in these models
+	mypresmod<-formula(presfit ~ s(SBT.seasonal) + s(SST.seasonal.mean) + s(SBT.min) + s(SBT.max) + s(SST.max) + s(rugosity) + s(GRAINSIZE)) # no regionfact in these models
 
 	# set 'gamma' penalty levels for gam to prevent overfitting_got this from a presentation by Simon Wood (https://people.maths.bris.ac.uk/~sw15190/mgcv/tampere/mgcv-advanced.pdf)
 	gammaPA <- log(nrow(spdata)) / 2
@@ -311,12 +307,12 @@ for(i in 1:length(allspp)){
 	
 		sp <- gsub('/', '', sp) # would mess up saving the file
 	
-		save(mods, file=paste(modfolder, 'CEmods_nonstationarity_projection2_', sp, '.RData', sep='')) # ~4mb file
+		save(mods, file=paste(modfolder, 'CEmods_nonstationarity_projection2_1960+1970', sp, '.RData', sep='')) # ~4mb file
 
 		# write these files each time through the loop so that we can watch progress
-		write.csv(modeldiag, file="output/modeldiag_nonstationarity_projection2.csv", row.names=FALSE)
+		write.csv(modeldiag, file="output/modeldiag_nonstationarity_projection2_1960+1970.csv", row.names=FALSE)
 
-		write.csv(allwarnings, file='output/warnings_nonstationarity_projection2.csv')
+		write.csv(allwarnings, file='output/warnings_nonstationarity_projection2_1960+1970.csv')
 	}
 }
 
