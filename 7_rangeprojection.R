@@ -1,5 +1,5 @@
 # Read in temperature fields and models, then make range projections
-
+  
 ## Set working directory
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
@@ -29,6 +29,10 @@ if(Sys.info()["user"] == "jamesmorley"){
 
 require(mgcv)
 require(Hmisc)
+library(lattice)
+library(RColorBrewer)
+#library(ggplot2)
+#library(reshape2)
 # require(parallel) # for multi-core calculations
 
 ###############################################
@@ -36,6 +40,12 @@ require(Hmisc)
 ###############################################
 rcp <- 85
 #rcp <- 26
+
+# different seasons to project with (letters represent the first letter of month)
+# season <- 'jfm'
+# season <- 'amj'
+season <- 'jas'
+# season <- 'ond'
 
 #runtype <- 'test'
 #runtype <- 'testseason'
@@ -47,14 +57,38 @@ stayinregion <- FALSE
 #############################
 # Choose species to project #
 #############################
+  
+# Distribution models were done in a few parts, due to 4 errors that stopped the loop. So model diagnostics need to be merged together
+# The species that got dropped due to problems with model fitting were: "ophidion holbrookii_Atl", "suberites ficus_Pac"; a cusk eel (non fishery) and a sponge, so no big deal about going back and fixing them
 load(paste('output/modeldiag_', runtype, '.Rdata', sep='')) # model diagnostics
+modeldiag1 <- modeldiag; rm(modeldiag)
+load(paste('output/modeldiag_PART2_', runtype, '.Rdata', sep='')) # model diagnostics
+modeldiag2 <- modeldiag; rm(modeldiag)
+load(paste('output/modeldiag_PART3_', runtype, '.Rdata', sep='')) # model diagnostics
+modeldiag3 <- modeldiag; rm(modeldiag)
+load(paste('output/modeldiag_PART4_', runtype, '.Rdata', sep='')) # model diagnostics
+modeldiag4 <- modeldiag; rm(modeldiag)
+load(paste('output/modeldiag_PART5_', runtype, '.Rdata', sep='')) # model diagnostics
+modeldiag5 <- modeldiag; rm(modeldiag)
+modeldiag1 <- modeldiag1[!modeldiag1$sppocean=='calappa flammea_Atl',] # this was redone with modeldiag2
+modeldiag2 <- modeldiag2[1:171,] # above row 171 was also on modeldiag3 (the file didn't close when the loop failed)
+modeldiag <- rbind(modeldiag1, modeldiag2, modeldiag3, modeldiag4, modeldiag5)
+modeldiag <- modeldiag[!is.na(modeldiag$sppocean),]
+length(unique(modeldiag$sppocean)) # 702 total_and all rows are unique species
 
-#projspp <- modeldiag$sppocean[modeldiag$auc.tt >= 0.75 & !is.na(modeldiag$auc.tt)] # from Elith et al., but there may be better criteria to use
+# 18 species did not fit the testing/training models successfully_I didn't recognize any of these as major fisheries
+modeldiag <- modeldiag[!is.na(modeldiag$acc.tt),] # 684 species
+#With additional criteria: ***from Elith et al.
+modeldiag <- modeldiag[modeldiag$auc.tt >= 0.75,] #669 species
+modeldiag <- modeldiag[((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.05) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.05)),] # down to 658 species
 
-#With additional criteria: ***
-projspp <- modeldiag$sppocean[modeldiag$auc.tt >= 0.75 & !is.na(modeldiag$auc.tt) & ((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.05) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.05))] # from Elith et al., and deviance explained by temp must be > 5% for at least one model
+projspp <- modeldiag$sppocean 
+rm(modeldiag1, modeldiag2, modeldiag3, modeldiag4, modeldiag5)
 
-print(paste(sum(!is.na(modeldiag$sppocean)), 'models fit'))
+#boxplot <- data.frame(cbind(Presence_models = modeldiag$dev.pres, Biomass_models = modeldiag$dev.biomass)) 
+#boxplot <- melt(boxplot)
+#ggplot(boxplot, aes(x=factor(variable), y=value)) + geom_boxplot() + labs(x='', y='%deviance explained')
+
 print(paste(length(projspp), 'models to project')) # number of species to project to
 
 	# look at species not selected
@@ -67,10 +101,8 @@ print(paste(length(projspp), 'models to project')) # number of species to projec
 #		with(notselected, sum((dev.pres - dev.pres.null <= 0.05) & (dev.biomass - dev.biomass.null <= 0.05), na.rm=TRUE))
 #		with(notselected, sum(auc.tt < 0.75 & (dev.pres - dev.pres.null <= 0.05) & (dev.biomass - dev.biomass.null <= 0.05), na.rm=TRUE))
 #
-#			
 #	# those that would be selected using auc instead of auc.tt
 #	modeldiag$sppocean[modeldiag$auc.tt < 0.75 & modeldiag$auc >= 0.75 & !is.na(modeldiag$auc.tt) & !is.na(modeldiag$auc) & ((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.05) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.05))]
-
 
 # find the files with these species for our chosen model fit
 files <- list.files(modfolder)
@@ -95,25 +127,26 @@ if(length(donespp)>0){
 length(files)
 length(projspp)
 
- 
 #################################
 # Prep environmental data
 #################################
- 
+   
 load('data/projectionGrid_Feb24_2017.RData')# load projection grid to get lat/lon values
 clim.grid <- proj.grid # rename as a different 'proj.grid' imported below with bathymetry
+clim.grid$depth <- NULL
 rm(proj.grid)
-nrow(unique(clim.grid)) # 13,637 unique lat/lon cells for projections_same as nrow(clim.grid)
 
-# Below any of the climate projection files can be uploaded by adjusting rcp, i, j, k, and l
-rcp <- 85 
-#rcp <- 26
-pred.folder <- c('sst_rcp85/tos_Omon_','sst_rcp26/tos_Omon_','sbt_rcp85/temp_btm_1950_2100_','sbt_rcp26/temp_btm_1950_2100_')
+if(rcp == 85){
+  pred.folder <- c('sst_rcp85/tos_Omon_','sbt_rcp85/temp_btm_1950_2100_')
+} else{
+  pred.folder <- c('sst_rcp26/tos_Omon_','sbt_rcp26/temp_btm_1950_2100_')
+}
+
 modelrun <- c('bcc-csm1-1-m','bcc-csm1-1','CanESM2','CCSM4','CESM1-CAM5','CNRM-CM5','GFDL-CM3','GFDL-ESM2M','GFDL-ESM2G','GISS-E2-R','GISS-E2-H','IPSL-CM5A-LR','IPSL-CM5A-MR','MIROC-ESM','MPI-ESM-LR','NorESM1-ME')
-pred.season <- c('jfm','amj','jas','ond')
 pred.metric <- c('max', 'min', 'mean')
 
-processlines <- function(x){
+# Malin's functions for reading in the data_need separate function for the min/max files as they have an extra column
+processlinesMean <- function(x){
   if(grepl('.....', x, fixed=TRUE)){
     return(rep(as.numeric(NA), 94))
   } else {
@@ -122,40 +155,220 @@ processlines <- function(x){
   }
 }
 
-# For reading in all models for a particular type of data, I’m using:
-i=3; k=3; l=3 # sbt_rcp85, ond, mean
-temps <- array(as.numeric(NA), dim=c(13637,94,length(modelrun)), dimnames=list(grid=1:13637, year=1:94, model=1:length(modelrun)))
-for(j in 1:length(modelrun)){
-  print(j)
-  # THE SURFACE VS. BOTTOM TEMP FILES ARE NAMED SLIGHTLY DIFFERENT, SO THIS CONDITIONAL STATEMENT NEEDED FOR MAKING filename
-  if(pred.folder[i] == 'sst_rcp85/tos_Omon_' | pred.folder[i] == 'sst_rcp26/tos_Omon_'){
-    filename = paste('data/', pred.folder[i], modelrun[j], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_2006_2100_', pred.season[k],'_', pred.metric[l], '.txt', sep="")
-  } else{
-    filename = paste('data/', pred.folder[i], modelrun[j], '_rcp', rcp, '_regrid.nc_2006_2100_', pred.season[k],'_', pred.metric[l], '.txt', sep="")
+processlinesMinMax <- function(x){
+  if(grepl('.....', x, fixed=TRUE)){
+    return(rep(as.numeric(NA), 95))
+  } else {
+    x <- sub('^ +', '', x) # remove leading whitespace
+    return(as.numeric(unlist(strsplit(x, split=' +'))))
   }
-  # filename = paste('data/', pred.folder[i], modelrun[j], '_rcp', rcp,'_regrid.nc_2006_2100_', pred.season[k],'_', pred.metric[l], '.txt', sep="")
+}
+
+# For reading in all models for a particular type of data
+tempsmeansbt <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
+tempsmeansst <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
+tempsminsbt <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
+tempsmaxsbt <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
+# tempsminsst <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun)) # Not in habitat models
+tempsmaxsst <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
+
+# The loops below produce matrix where each column is a different climate model and the years are stacked in one vector
+# seasonal mean sbt
+for(i in 1:length(modelrun)){
+  print(i)
+  filename = paste('data/', pred.folder[2], modelrun[i], '_rcp', rcp, '_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[3], '.txt', sep="")
   filein <- readLines(filename)
-  temps[,,j] <- t(sapply(filein, processlines))
+  filein <- t(sapply(filein, processlinesMean))
+  rownames(filein) <- NULL
+  tempsmeansbt[,i] <- as.vector(filein)
+}
+# seasonal mean sst
+for(i in 1:length(modelrun)){
+  print(i)
+  filename = paste('data/', pred.folder[1], modelrun[i], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[3], '.txt', sep="")
+  filein <- readLines(filename)
+  filein <- t(sapply(filein, processlinesMean))
+  rownames(filein) <- NULL
+  tempsmeansst[,i] <- as.vector(filein)
+}
+# min annual sbt
+for(i in 1:length(modelrun)){
+  print(i)
+  filename = paste('data/', pred.folder[2], modelrun[i], '_rcp', rcp, '_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[2], '.txt', sep="")
+  filein <- readLines(filename)
+  filein <- t(sapply(filein, processlinesMinMax))
+  rownames(filein) <- NULL
+  fileinVec <- as.vector(filein)
+  fileinVec <- fileinVec[1:1281878]
+  tempsminsbt[,i] <- fileinVec
+}
+# min annual sst
+for(i in 1:length(modelrun)){
+  print(i)
+  filename = paste('data/', pred.folder[1], modelrun[i], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[2], '.txt', sep="")
+  filein <- readLines(filename)
+  filein <- t(sapply(filein, processlinesMinMax))
+  rownames(filein) <- NULL
+  fileinVec <- as.vector(filein)
+  fileinVec <- fileinVec[1:1281878]
+  tempsminsst[,i] <- fileinVec
+}
+# max annual sbt
+for(i in 1:length(modelrun)){
+  print(i)
+  filename = paste('data/', pred.folder[2], modelrun[i], '_rcp', rcp, '_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[1], '.txt', sep="")
+  filein <- readLines(filename)
+  filein <- t(sapply(filein, processlinesMinMax))
+  rownames(filein) <- NULL
+  fileinVec <- as.vector(filein)
+  fileinVec <- fileinVec[1:1281878]
+  tempsmaxsbt[,i] <- fileinVec
+}
+# max annual sst
+for(i in 1:length(modelrun)){
+  print(i)
+  filename = paste('data/', pred.folder[1], modelrun[i], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[1], '.txt', sep="")
+  filein <- readLines(filename)
+  filein <- t(sapply(filein, processlinesMinMax))
+  rownames(filein) <- NULL
+  fileinVec <- as.vector(filein)
+  fileinVec <- fileinVec[1:1281878]
+  tempsmaxsst[,i] <- fileinVec
+}
+   
+colnames(clim.grid) <- c('lonClimgrid', 'latClimgrid') 
+clim.grid$index <- c(1:nrow(clim.grid))
+load('data/ProjectionBathGrid_Feb27_2017.RData')# load bathymetry projection grid
+proj.grid$depth <- NULL # To reduce file size
+year.bin <- data.frame(year=2007:2100, bin=c(rep('2007-2020', 14), rep('2021-2040', 20), rep('2041-2060', 20), rep('2061-2080', 20), rep('2081-2100', 20))) # for making summary graphs in the loop
+cols = colorRampPalette(colors = c('dark blue', 'blue', 'white', 'red', 'dark red'))
+
+# Build and save all 16 prediction data sets_make some summary figures
+# The following arrays are muted b/c my CPU couldn't handle the large files, so I save a prediction file for each projection model, split by east vs. west
+# ....the array may work on amphiprion, but it is a huge file so I'm thinking this method will be faster
+#pred_arrayEast <- array(numeric(), dim=c(7763648, 15, 16))
+#pred_arrayWest <- array(numeric(), dim=c(6187644, 15, 16))
+for(i in 1:length(modelrun)){ 
+  print(paste('Beginning model number ', i, ': ', modelrun[i], sep=''))
+  pred <- data.frame(cbind(clim.grid, year=rep(2007:2100, rep=94, each=13637), SBT.seasonal = tempsmeansbt[,i], SST.seasonal.mean = tempsmeansst[,i], SBT.min = tempsminsbt[,i], SBT.max = tempsmaxsbt[,i], SST.max = tempsmaxsst[,i]))
+  pred <- merge(pred, year.bin, by='year', all.x=T)  # Bin into 20 year periods to make some plots
+  pred.bathE <- merge(pred, proj.grid[proj.grid$lonClimgrid > -105,], by=c('lonClimgrid', 'latClimgrid'), all.y = T, sort=F)
+  pred.bathW <- merge(pred, proj.grid[proj.grid$lonClimgrid < -105,], by=c('lonClimgrid', 'latClimgrid'), all.y = T, sort=F)
+  pred.bathE <- pred.bathE[order(pred.bathE$year, pred.bathE$index),] # reorder by year and index
+  pred.bathW <- pred.bathW[order(pred.bathW$year, pred.bathW$index),] # reorder by year and index
+  
+  aggE <- aggregate(list(sbt.seasonal = pred.bathE$SBT.seasonal, SST.seasonal.mean = pred.bathE$SST.seasonal.mean, SBT.min = pred.bathE$SBT.min,
+            SBT.max = pred.bathE$SBT.max, SST.max = pred.bathE$SST.max), by=list(year_range=pred.bathE$bin, latitude=pred.bathE$latBathgrid, longitude=pred.bathE$lonBathgrid), FUN=mean)
+  aggW <- aggregate(list(sbt.seasonal = pred.bathW$SBT.seasonal, SST.seasonal.mean = pred.bathW$SST.seasonal.mean, SBT.min = pred.bathW$SBT.min,
+            SBT.max = pred.bathW$SBT.max, SST.max = pred.bathW$SST.max), by=list(year_range=pred.bathW$bin, latitude=pred.bathW$latBathgrid, longitude=pred.bathW$lonBathgrid), FUN=mean)
+  
+  # 20yr. summary figures for each model
+  pdf(width=14, height=5, file=paste('figures/Temp_projections/', modelrun[i], '_20yr_tempProj.pdf', sep=''))
+  print(levelplot(sbt.seasonal~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('sbt.seasonal_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$sbt.seasonal-.1),max(aggE$sbt.seasonal+.1), length.out=40), 
+            col.regions=cols, layout = c(5, 1), panel = function(...) {
+              panel.fill(col = "light gray")
+              panel.levelplot(...)
+            }))  
+  print(levelplot(SST.seasonal.mean~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SST.seasonal.mean_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SST.seasonal.mean-.1),max(aggE$SST.seasonal.mean+.1), length.out=40), 
+            col.regions=cols, layout = c(5, 1), panel = function(...) {
+              panel.fill(col = "light gray")
+              panel.levelplot(...)
+            }))  
+  print(levelplot(SBT.min~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SBT.min_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SBT.min-.1),max(aggE$SBT.min+.1), length.out=40), 
+            col.regions=cols, layout = c(5, 1), panel = function(...) {
+              panel.fill(col = "light gray")
+              panel.levelplot(...)
+            }))  
+  print(levelplot(SBT.max~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SBT.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SBT.max-.1),max(aggE$SBT.max+.1), length.out=40), 
+            col.regions=cols, layout = c(5, 1), panel = function(...) {
+              panel.fill(col = "light gray")
+              panel.levelplot(...)
+            }))  
+  print(levelplot(SST.max~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SST.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SST.max-.1),max(aggE$SST.max+.1), length.out=40), 
+            col.regions=cols, layout = c(5, 1), panel = function(...) {
+              panel.fill(col = "light gray")
+              panel.levelplot(...)
+            }))  
+  print(levelplot(sbt.seasonal~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('sbt.seasonal_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$sbt.seasonal-.1),max(aggW$sbt.seasonal+.1), length.out=40), 
+            col.regions=cols, layout = c(5, 1), panel = function(...) {
+              panel.fill(col = "light gray")
+              panel.levelplot(...)
+            }))  
+  print(levelplot(SST.seasonal.mean~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SST.seasonal.mean_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SST.seasonal.mean-.1),max(aggW$SST.seasonal.mean+.1), length.out=40), 
+            col.regions=cols, layout = c(5, 1), panel = function(...) {
+              panel.fill(col = "light gray")
+              panel.levelplot(...)
+            }))  
+  print(levelplot(SBT.min~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SBT.min_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SBT.min-.1),max(aggW$SBT.min+.1), length.out=40), 
+            col.regions=cols, layout = c(5, 1), panel = function(...) {
+              panel.fill(col = "light gray")
+              panel.levelplot(...)
+            }))  
+  print(levelplot(SBT.max~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SBT.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SBT.max-.1),max(aggW$SBT.max+.1), length.out=40), 
+            col.regions=cols, layout = c(5, 1), panel = function(...) {
+              panel.fill(col = "light gray")
+              panel.levelplot(...)
+            }))  
+  print(levelplot(SST.max~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SST.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SST.max-.1),max(aggW$SST.max+.1), length.out=40), 
+            col.regions=cols, layout = c(5, 1), panel = function(...) {
+              panel.fill(col = "light gray")
+              panel.levelplot(...)
+            }))  
+  dev.off()
+
+  filenameE <- paste('data/prediction_files/predictionEAST_rcp',rcp, '_', season, '_', modelrun[i], '.RData', sep='')
+  filenameW <- paste('data/prediction_files/predictionWEST_rcp',rcp, '_', season, '_', modelrun[i], '.RData', sep='')
+  save(pred.bathE, file=filenameE)
+  save(pred.bathW, file=filenameW)
+  #pred_arrayEast[,,i] <- pred.bathE
+  #pred_arrayWest[,,i] <- pred.bathW
 }
   
-# Graph up some temperature projection values
-library(lattice); library(RColorBrewer)
-# Take a look at some temperature values_I recycle this (with the above) code to look at different combinations of model, year, etc.
-summary(temps[,,12])
-abc <- data.frame(cbind(temps[,,12], clim.grid))
+# =======================================================================================
+# CODE BELOW TO LOOK AT PROJECTION DATA A DIFFERENT WAY THAN THE ABOVE 20yr. SUMMARIES
+# =======================================================================================
+# Below are four blocks that can be recycled to bring in any of the data_adjust 'i' for model runs_this could be condensed if necessary
+proj.clim <- unique(data.frame(lonClimgrid=proj.grid$lonClimgrid, latClimgrid=proj.grid$latClimgrid))
+# seasonal mean sbt
+  filename = paste('data/', pred.folder[2], modelrun[i], '_rcp', rcp, '_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[3], '.txt', sep="")
+  filein <- readLines(filename)
+  filein <- t(sapply(filein, processlinesMean))
+  rownames(filein) <- NULL
+   
+# seasonal mean sst
+  filename = paste('data/', pred.folder[1], modelrun[i], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[3], '.txt', sep="")
+  filein <- readLines(filename)
+  filein <- t(sapply(filein, processlinesMean))
+  rownames(filein) <- NULL
 
-nrow(abc[!is.na(abc$X74),]) # how many total rows of data
+# min or max sbt_for these two need to adjust 'i' but also 'pred.metric' can be 1 or 2 (max or min)
+  filename = paste('data/', pred.folder[2], modelrun[i], '_rcp', rcp, '_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[2], '.txt', sep="")
+  filein <- readLines(filename)
+  filein <- t(sapply(filein, processlinesMinMax))
+  rownames(filein) <- NULL
 
-plot(latgrid~longrid, data=abc[!is.na(abc$X74),])
-points(latgrid~longrid, col='red', data=abc[abc$X74 > 160, ])
-points(latgrid~longrid, col='green', data=abc[abc$X74 < -19, ])
-# another plot option
-forPlot <- abc$X74# choose a given year to work with the plots_this is only necessary for establishing the cutpoints
+# min or max sst
+  filename = paste('data/', pred.folder[1], modelrun[i], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[2], '.txt', sep="")
+  filein <- readLines(filename)
+  filein <- t(sapply(filein, processlinesMinMax))
+  rownames(filein) <- NULL
+
+# Take a look at some temperature values_I recycle this code to look at different combinations of model, year, etc.
+abc <- data.frame(cbind(filein, clim.grid)) # attach lat and lon of grid cells
+abc <- merge(proj.clim, abc, by=c('lonClimgrid', 'latClimgrid'), all.x=T) # trim out areas we will not project to
+summary(abc)
+
+plot(latClimgrid~lonClimgrid, cex=.1, data=abc[!is.na(abc$X7),])
+points(latClimgrid~lonClimgrid, col='blue', cex=.5, data=abc[abc$X7 < -5, ])
+points(latClimgrid~lonClimgrid, col='red', data=abc[abc$X89 > 45, ])
+levelplot(X89 ~ lonClimgrid * latClimgrid, data = abc)
+# another plot option for showing just the outier areas well
+forPlot <- abc$X89# choose a given year to work with the plots_this is only necessary for establishing the cutpoints
 cutpts <- c(min(forPlot, na.rm=T)-1, -10, -5, 40, 80, max(forPlot, na.rm=T)+1) # add some cutpoints to show outliers_gray is relatively normal, with two levels of both negative and positive outliers
-levelplot(X74 ~ longrid * latgrid, data = abc[!is.na(abc$X74),], at = cutpts, cuts = 6, pretty = T, col.regions = (rev(brewer.pal(9, "RdBu")))) 
+levelplot(X89 ~ lonClimgrid * latClimgrid, data = abc[!is.na(abc$X89),], at = cutpts, cuts = 6, pretty = T, col.regions = (rev(brewer.pal(9, "RdBu")))) 
 
 # ===========================================
-# Malin's code for looking at empty cells
+# Malin's code for looking at empty cells_this can probably be removed as all empty cells appear to have been filled
 # ===========================================
 
 # how much data do we have? (need array from previous code block)
@@ -184,6 +397,26 @@ sum(nmodeldat>=10)
 
 dim(temps)
 
+# =======================================================================================
+# The code below is still in progress
+# =======================================================================================
+
+load(filename)
+load('output/CEmodels/CEmods_fitallreg_2017_archosargus probatocephalus_Atl.RData')
+mygam1 <- mods[[1]]
+mygam2 <- mods[[2]]
+pred.bath$regionfact <- 'SCDNR_SEUS'
+colnames(pred.bath) <- c('lonClimgrid', 'latClimgrid', 'index', 'year', 'SBT.seasonal', 'SST.seasonal.mean', 'SBT.min', 'SST.min', 'SBT.max', 'SST.max', 'latBathgrid', 'lonBathgrid', 'rugosity', 'GRAINSIZE', 'regionfact')
+pred.bathE <- pred.bath[pred.bath$lonClimgrid > -105,]
+pred.bathE <- pred.bathE[!is.na(pred.bathE$SBT.seasonal),]
+pred.bathE <- pred.bathE[!is.na(pred.bathE$rugosity),]
+#Change the na.action to just drop those rows? 
+preds1 <- predict(mygam1, newdata = pred.bathE[pred.bathE$year == 2007,], type='response')
+preds2 <- exp(predict(mygam2, newdata = pred.bathE[pred.bathE$year == 2007,], type='response')) 
+preds <- preds1*preds2
+pred.grid <- data.frame(cbind(pred.bathE[pred.bathE$year == 2007,], preds))
+
+levelplot(SBT.seasonal ~ lonBathgrid*latBathgrid, data=pred.grid)
 
 # =================================================================================
 # =================================================================================

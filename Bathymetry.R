@@ -666,24 +666,36 @@ dev.off()
 load('data/bathy_grid_course_Feb7_2017.RData') # loads 'proj.grid.bath'
 proj.sed <- readRDS('data/benthic_hab_proj.rds')
 setkey(proj.grid.bath, latBathgrid, lonBathgrid); setkey(proj.sed, latBathgrid, lonBathgrid)
-proj.grid <- merge(proj.grid.bath, proj.sed[,c('latBathgrid', 'lonBathgrid', 'GRAINSIZE', 'habitat')], all.x=TRUE)
+proj.grid <- merge(proj.grid.bath, proj.sed[,c('latBathgrid', 'lonBathgrid', 'GRAINSIZE')], all.x=TRUE)
 
 proj.grid <- proj.grid[complete.cases(proj.grid),]
-proj.grid$habitatFact <- as.character(proj.grid$habitat)
-proj.grid$habitatFact[proj.grid$habitatFact %in% c("rocky_reef", "shelf_hard", "slope_hard", "deep_hard")] <- "hard"
-proj.grid$habitatFact[proj.grid$habitatFact %in% c("subt_soft", "slope_soft", "shelf_soft", "deep_soft")] <- "soft"
-proj.grid$habitatFact <- factor(proj.grid$habitatFact, levels=c('soft', 'hard'), ordered=FALSE) 
+# proj.grid$habitatFact <- as.character(proj.grid$habitat)
+# proj.grid$habitatFact[proj.grid$habitatFact %in% c("rocky_reef", "shelf_hard", "slope_hard", "deep_hard")] <- "hard"
+# proj.grid$habitatFact[proj.grid$habitatFact %in% c("subt_soft", "slope_soft", "shelf_soft", "deep_soft")] <- "soft"
+# proj.grid$habitatFact <- factor(proj.grid$habitatFact, levels=c('soft', 'hard'), ordered=FALSE) 
 
-# Plot up sediment data
+# Drop a handful of grid cells that are apart from the main prediction areas
+proj.grid <- proj.grid[!(latBathgrid < 25 & lonBathgrid > -100 & lonBathgrid < -95)]
+proj.grid <- proj.grid[!(latBathgrid < 55 & latBathgrid > 53.5 & lonBathgrid < -175)]
+# Drop deep grid cells
+proj.grid <- proj.grid[depth > -401]
+proj.grid <- proj.grid[latBathgrid > 24.27]
+# Drop the bahamas
+proj.grid <- proj.grid[!(latBathgrid < 27.7 & lonBathgrid > -79.7)]
+
+proj.grid$rugosity <- log(proj.grid$rugosity + 1) #Log rugosity to match habitat models
+
+# Plot up sediment and rugosity data
 cutpts <- c(-5, -3, -1, 0, 1, 2, 3, 4, 5, 7, 8)
 pdf(width=15, height=9, file='figures/projection_grid_sediment.pdf')
 par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
 levelplot(GRAINSIZE ~ lonBathgrid * latBathgrid, data = proj.grid, at = cutpts, cuts = 11, pretty = T, col.regions = (rev(brewer.pal(11, "RdBu"))))
 dev.off()
-
-pdf(width=15, height=9, file='figures/projection_grid_hardBottom.pdf')
-map(database='world', fill=TRUE, col='dark gray', border=FALSE, xlim=range(proj.grid$lonClimgrid), ylim=range(proj.grid$latClimgrid), xlab='Longitude', ylab='Latitude')
-points(latBathgrid~lonBathgrid, col='blue', cex=.2, data=proj.grid[habitatFact=='hard'])
+ 
+cutpts <- c(0, .5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 7)
+pdf(width=15, height=9, file='figures/projection_grid_rugosity.pdf')
+par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
+levelplot(rugosity ~ lonBathgrid * latBathgrid, data = proj.grid, at = cutpts, cuts = 11, pretty = T, col.regions = (rev(brewer.pal(11, "RdBu"))))
 dev.off()
 
 rm(cutpts, proj.sed, proj.grid.bath)

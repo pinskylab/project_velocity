@@ -287,7 +287,7 @@ avecatchyrreg$survey <- as.character(avecatchyrreg$survey) # the melt (or tapply
 # merge with master file, adds mean biomass predictor
 haulsMod <- merge(haulsMod, avecatchyrreg, all=T, by=c('year', 'survey'), sort=F)
 haulsMod$logmeanbiom <- log(haulsMod$biomassmean + 1)
-
+  
 #Save average biomassmean for each region (across all years) to use in later predictions.
 avemeanbiomass <- aggregate(avecatchyrreg$biomassmean, by=list(avecatchyrreg$survey), FUN=mean)
 colnames(avemeanbiomass) <- c('survey', 'avecpue')

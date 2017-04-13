@@ -59,13 +59,13 @@ n = rep(NA, length(allspp))
 modeldiag = data.frame(sppocean=n, npres=n, fakepres=n, npres.tr=n, npres.te=n, ntot=n, thresh=n, thresh.tt=n, auc=n, auc.tt=n, tss=n, tss.tt=n, tssmax=n, tssmax.tt=n, acc=n, acc.tt=n, accmax=n, accmax.tt=n, sens=n, sens.tt=n, spec=n, spec.tt=n, kappa=n, kappa.tt=n, kappamax=n, kappamax.tt=n, rpb=n, smear=n, pred_obsMedian=n, pred_obsMean=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.surv_year=n, r2.abun.surv_year=n, r2.predTT.surv_year=n, dev.pres=n, dev.biomass=n, dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # pred_obsMedianNosmear=n, pred_obsMeanNosmear=n, # tt is for training/testing model
  
 #Open pdf to print figures 
-pdf(file=paste("figures/CEmodelGAMsmooths/GAMs_PART3",runname,".pdf",sep=""),width=10,height=10)
+pdf(file=paste("figures/CEmodelGAMsmooths/GAMs_PART5",runname,".pdf",sep=""),width=10,height=10)
  
 options(warn=1) # print warnings as they occur
 allwarnings = NULL
 print(paste(length(allspp), 'models to fit'))
   
-for(i in 172:length(allspp)){ #seq(from=41, to=705, by=20)){ 
+for(i in 652:length(allspp)){ #seq(from=41, to=705, by=20)){ 
   fittrain = TRUE
   mygam1tt <- mygam2tt <- mygam1 <- mygam2 <- preds <- preds1 <- preds2 <- predstt <- preds1tt <- preds2tt <- NULL 
        
@@ -381,7 +381,7 @@ for(i in 172:length(allspp)){ #seq(from=41, to=705, by=20)){
     mtext(paste("r^2 =", abundTTr2), side=3, line=-1.5)
     modeldiag$r2.predTT.surv_year[i]<-abundTTr2
   }
-   
+     
   modeldiag$r2.pres.surv_year[i]<-presr2
   modeldiag$r2.abun.surv_year[i]<-abunr2
   par(mfrow=c(1,1))
@@ -400,10 +400,10 @@ for(i in 172:length(allspp)){ #seq(from=41, to=705, by=20)){
   #think about other data to save - number of pres/abs by region (?) 
   
   # write these files each time through the loop so that we can watch progress
-  save(modeldiag,file=paste("output/modeldiag_PART3_",runname,".Rdata",sep=""))
-  write.csv(modeldiag, file=paste("output/modeldiag_PART3_",runname,".csv",sep=""))
+  save(modeldiag,file=paste("output/modeldiag_PART5_",runname,".Rdata",sep=""))
+  write.csv(modeldiag, file=paste("output/modeldiag_PART5_",runname,".csv",sep=""))
   
-  write.csv(allwarnings, file=paste('output/warnings_PART3_', runname, '.csv', sep=''))
+  write.csv(allwarnings, file=paste('output/warnings_PART5_', runname, '.csv', sep=''))
    
 }
 dev.off()
