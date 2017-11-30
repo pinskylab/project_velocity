@@ -1,5 +1,6 @@
+# This script pretty much cleaned up_9/11/17
+
 library(data.table) 
-library(ggplot2)
 library(lattice)
 library(maps)
 setwd('/Users/jamesmorley/Documents/project_velocity')
@@ -23,6 +24,7 @@ hauls$GRAINSIZE.x <- hauls$GRAINSIZE.y <- NULL
 rm(abc, sedOld1)
  
 # Create column based on 'habitat' that is just hard vs. soft_as currently the other aspect of this is indicating depth (i.e. 'subt', 'shelf', 'slope')
+# This was not ultimately used in the habitat models_hard bottom is too rare, which caused some issues
 hauls$habitatFact <- as.character(hauls$habitat)
 hauls$habitatFact[hauls$habitatFact %in% c("rocky_reef", "shelf_hard", "slope_hard", "deep_hard")] <- "hard"
 hauls$habitatFact[hauls$habitatFact %in% c("subt_soft", "slope_soft", "shelf_soft", "deep_soft")] <- "soft" # 1.4% of hauls are designated as 'hard'_this is after removing the SCDNR_SEUSReef survey, which is mostly hard
@@ -53,7 +55,7 @@ summary(lm(SST.seasonal.mean~SBT.seasonal, data=hauls)) # slope=0.927217(0.00159
 # Clearly there are some other covariation concerns, but the minimum temps is by far the worst, and makes the most sense considering winter destratification occurs in most/all surveyed areas
 
 # Below are some changes to prepare for models
-hauls$survey <- hauls$region #keeps all the seasonal surveys separate in "survey")_for calcuation of mean biomass
+hauls$survey <- hauls$region #keeps all the seasonal surveys separate in "survey"_for calcuation of mean biomass
 hauls$surveyfact <- as.factor(hauls$survey)
 
 # Combine different seasonal surveys within regions
@@ -66,7 +68,7 @@ hauls$region[hauls$region %in% c("VIMS_NEAMAPFall","VIMS_NEAMAPSpring")] <- "VIM
 hauls$regionfact <- as.factor(hauls$region) # the version to use for models
 
 hauls$rugosity <- log(hauls$tri + 1)
-
+ 
 # drop 1932 rows with missing predictor values_gams drop rows missing predictor values
 hauls <- hauls[complete.cases(hauls$rugosity, hauls$SBT.seasonal, hauls$GRAINSIZE),] # the multiple sediment and SODA variables have the same NA rows (within each of those two categories) 
 
@@ -75,8 +77,22 @@ hauls$ocean[hauls$region %in% c("DFO_Newfoundland", "DFO_ScotianShelf","DFO_SoGu
 
 save(hauls, file='data/master_hauls_March7_2017.RData')
 
+# Run some diagnostics among predictor variables to look more closely at colinearity_above I only compared SST with SBT
+haulsE <- hauls[hauls$longrid > -100,]
+haulsW <- hauls[hauls$longrid < -100,]
+predsE <- data.frame(cbind(rugosity=haulsE$rugosity, GRAINSIZE=haulsE$GRAINSIZE, SST.seasonal.mean=haulsE$SST.seasonal.mean, SST.max=haulsE$SST.max, SBT.seasonal=haulsE$SBT.seasonal, SBT.min=haulsE$SBT.min, SBT.max=haulsE$SBT.max))
+predsW <- data.frame(cbind(rugosity=haulsW$rugosity, GRAINSIZE=haulsW$GRAINSIZE, SST.seasonal.mean=haulsW$SST.seasonal.mean, SST.max=haulsW$SST.max, SBT.seasonal=haulsW$SBT.seasonal, SBT.min=haulsW$SBT.min, SBT.max=haulsW$SBT.max))
+preds <- data.frame(cbind(rugosity=hauls$rugosity, GRAINSIZE=hauls$GRAINSIZE, SST.seasonal.mean=hauls$SST.seasonal.mean, SST.max=hauls$SST.max, SBT.seasonal=hauls$SBT.seasonal, SBT.min=hauls$SBT.min, SBT.max=hauls$SBT.max))
+
+cor(preds) # SBT.seasonal highly correlated with all temperature metrics, all > 0.805, the other two SBT metrics are both > 0.919 correlation with SBT.seasonal
+# all other potential temperature combinations have a correlation of > 0.75
+# Rugosity and grainsize are not strongly correlated with any of the temp variables or eachother.
+# The 'cor' function is not the same as an R2 value, it is higher
+cor(predsW) # correlations are a bit weaker on the west coast for a number of combinations
+
 # SCRIPT ENDS HERE
 
+ 
 # ==========================================================================================================================================
 # Below produces 'haulsTrim' which is used for estimating annual mean cpue, which we no longer use.
 # If we bring this predictor back in, probably should go over this again (esp. for DFO surveys), b/c we added new sediment data to fill in some holes since the first time

@@ -1,4 +1,8 @@
-# Code for making species predictions on Amphiprion
+# Code for making species predictions on Amphiprion_with a shell script
+args <- commandArgs(trailingOnly=T)
+print(args)
+myalcnt1 <- as.numeric(args[1])
+myalcnt2 <- as.numeric(args[2])
 
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
   setwd('~/Documents/range_projections/')
@@ -7,26 +11,26 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
   climgridfolder <- 'data/'
   # .libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages_Muted for Jim's use
 }   
-    
+           
 require(mgcv)
 
 RCP <- c(26,85)
 season <- 'jas'
 modelrun <- c('bcc-csm1-1-m','bcc-csm1-1','CanESM2','CCSM4','CESM1-CAM5','CNRM-CM5','GFDL-CM3','GFDL-ESM2M','GFDL-ESM2G','GISS-E2-R','GISS-E2-H','IPSL-CM5A-LR','IPSL-CM5A-MR','MIROC-ESM','MPI-ESM-LR','NorESM1-ME')
 pred.metric <- c('max', 'min', 'mean')
-
+ 
 load('data/speciesProjectionList.RData')
-mafmc <- projspp[c(600,105,310,523,517,270,438,587,465,525,526,392,17,79,135,196,26,28,498,436)]   
-mafmcReg <- regionFreq[c(600,105,310,523,517,270,438,587,465,525,526,392,17,79,135,196,26,28,498,436)]
+# below is a list of species that were already done and need to be removed from projspp
+doneSpp <- sort(projspp[c(419,600,105,310,523,517,270,438,587,465,525,526,392,17,79,135,196,26,28,498,307,164,275,37,66,126,136,151,163,170,188,264)])
+projspp <- projspp[!(projspp %in% doneSpp)]
+regionFreq <- regionFreq[-c(419,600,105,310,523,517,270,438,587,465,525,526,392,17,79,135,196,26,28,498,307,164,275,37,66,126,136,151,163,170,188,264)]
 # Begin loop to make a prediction for each species and save each species individually
-#species <- projspp[419] # CHANGE THIS TO A SPECIES LIST SPECIFIC TO NEUS WORK
-#regionfact <- regionFreq[419]
 
 predsE <- matrix(data=NA, nrow=7763648, ncol=16)
 predsW <- matrix(data=NA, nrow=6187644, ncol=16)
 
-for(k in 19:20){
-  species = mafmc[k]
+for(k in myalcnt1:myalcnt2){
+  species = projspp[k]
   load(paste('CEmodels/CEmods_fitallreg_2017_', species, '.RData', sep=''))
   mygam1 <- mods[[1]]
   mygam2 <- mods[[2]]
@@ -42,7 +46,7 @@ for(k in 19:20){
         load(paste('data/prediction_files/predictionWEST_rcp',rcp, '_', season, '_', modelrun[j], '.RData', sep=''))
         predictSpp <- pred.bathW
       }
-      predictSpp$regionfact = mafmcReg[k]
+      predictSpp$regionfact = regionFreq[k]
       print(paste('Predicting for: ', species, '    model number:', j, ' ', modelrun[j], '    ', Sys.time(), sep=''))
       preds1 <- predict(mygam1, newdata = predictSpp, type='response')
       preds2 <- exp(predict(mygam2, newdata = predictSpp, type='response')) 
@@ -51,7 +55,7 @@ for(k in 19:20){
       } else{
         predsW[,j] <- preds1*preds2
       }
-    }
+    }   
     predictSpp <- predictSpp[,c(1:4, 10:12)]
     if(grepl('_Atl', species)){
       pred.grid <- data.frame(cbind(predictSpp, predsE))
@@ -64,10 +68,10 @@ for(k in 19:20){
                 mean8=pred.grid$X8, mean9=pred.grid$X9, mean10=pred.grid$X10, mean11=pred.grid$X11, mean12=pred.grid$X12, mean13=pred.grid$X13, mean14=pred.grid$X14, 
                 mean15=pred.grid$X15, mean16=pred.grid$X16), by=list(year_range=pred.grid$bin, latitude=pred.grid$latBathgrid, longitude=pred.grid$lonBathgrid), FUN=mean)
     
-    filename <- paste(projfolder, species, '_rcp', rcp, '_', season, '_prediction.RData', sep='')
+    # filename <- paste(projfolder, species, '_rcp', rcp, '_', season, '_prediction.RData', sep='')
     filenameAgg <- paste(projfolder, species, '_rcp', rcp, '_', season, '_prediction_AGG.RData', sep='')
     # SAVE pred.agg & pred.grid SEPARATELY TO SAVE TIME ON MAKING DIFFERENT TYPES OF GRAPHS
-    save(pred.grid, file=filename)
+    # save(pred.grid, file=filename)
     save(pred.agg, file=filenameAgg)
   }
 }

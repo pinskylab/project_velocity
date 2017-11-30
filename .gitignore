@@ -6,18 +6,20 @@
 
 proj_ranges.Rproj
 
-#*.RData
-#*.rdata
+*.RData
+*.rdata
+*.Rdata
 
-#*.gz
+*.gz
 *.nc
-#*.csv
+*.csv
 *.txt
-#*.xls
+*.xls
 *.tar
-#*.pdf
-#*.docx
-
+*.pdf
+*.docx
+*.png
+*.Rout
 
 avhrr-only-v2.19890101
 
@@ -26,7 +28,8 @@ avhrr-only-v2.19890101
 cmsp_data/*
 
 # ignore all "data" files (also on https://github.com/mpinsky/proj_ranges)
-#data/*
+output/*
+data/*
 data/sbt_rcp85/*
 data/sbt_rcp26/*
 data/sst_rcp85/*

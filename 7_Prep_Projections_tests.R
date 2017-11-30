@@ -1,120 +1,19 @@
-# Read in temperature fields and models
-  
-## Set working directory
-if(Sys.info()["nodename"] == "pinsky-macbookair"){
-	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
-	projfolder = '../CEmodels_proj'
-	modfolder = '../CEModels'
-	climgridfolder <- '../data/'
-	numcorestouse <- 2
-	}
-if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
-	setwd('~/Documents/range_projections/')
-	projfolder = 'CEmodels_proj'
-	modfolder = 'CEmodels'
-	climgridfolder <- 'data/'
-	numcorestouse <- 12
-	# .libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages_Muted for Jim's use
-}
-if(Sys.info()["user"] == "jamesmorley"){
-  setwd('/Users/jamesmorley/Documents/project_velocity')
-  projfolder = 'output/CEmodels_proj/'
-  modfolder <- 'output/CEmodels/'
-  climgridfolder <- 'data/'
-}
+# Script to try and figure out the blocky climate projection data
 
-require(mgcv)
-require(Hmisc)
-library(lattice)
-library(RColorBrewer)
+  setwd('/Users/jamesmorley/Documents/project_velocity')
+  climgridfolder <- 'data/'
+
+library(latticeExtra)
 library(maps)
 library(geosphere)
-# require(parallel) # for multi-core calculations
-
-#############################
-# Choose species to project #
-#############################
-
-#runtype <- 'test'
-#runtype <- 'testseason'
-#runtype <- 'testK6noSeas'
-runtype <- 'fitallreg_2017'
-
-# Distribution models were done in a few parts, due to 4 errors that stopped the loop. So model diagnostics need to be merged together
-# Two species were dropped b/c the model didn't fit, they were: "ophidion holbrookii_Atl", "suberites ficus_Pac"; a cusk eel (non fishery) and a sponge, so no big deal about going back and seeing why they didn't fit
-load(paste('output/modeldiag_', runtype, '.Rdata', sep='')) # model diagnostics
-modeldiag1 <- modeldiag; rm(modeldiag)
-load(paste('output/modeldiag_PART2_', runtype, '.Rdata', sep='')) # model diagnostics
-modeldiag2 <- modeldiag; rm(modeldiag)
-load(paste('output/modeldiag_PART3_', runtype, '.Rdata', sep='')) # model diagnostics
-modeldiag3 <- modeldiag; rm(modeldiag)
-load(paste('output/modeldiag_PART4_', runtype, '.Rdata', sep='')) # model diagnostics
-modeldiag4 <- modeldiag; rm(modeldiag)
-load(paste('output/modeldiag_PART5_', runtype, '.Rdata', sep='')) # model diagnostics
-modeldiag5 <- modeldiag; rm(modeldiag)
-modeldiag1 <- modeldiag1[!modeldiag1$sppocean=='calappa flammea_Atl',] # this was redone with modeldiag2 so this is a 'repeat' and can be dropped
-modeldiag2 <- modeldiag2[1:171,] # greater than row 171 was also on modeldiag3 (the file didn't close when the loop failed), so these are also repeats that can be dropped
-modeldiag <- rbind(modeldiag1, modeldiag2, modeldiag3, modeldiag4, modeldiag5)
-modeldiag <- modeldiag[!is.na(modeldiag$sppocean),]
-length(unique(modeldiag$sppocean)) # 702 total_and all rows are unique species
-
-# 18 species did not fit the testing/training models successfully_I didn't recognize any of these as major fisheries
-modeldiag <- modeldiag[!is.na(modeldiag$acc.tt),] # 684 species
-rm(modeldiag1, modeldiag2, modeldiag3, modeldiag4, modeldiag5)
-
-#With additional criteria: ***from Elith et al.
-modeldiag <- modeldiag[modeldiag$auc.tt >= 0.75,] #669 species
-modeldiag <- modeldiag[((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.048) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.048)),] # down to 659 species
-# I adjusted this above line from .05 to .048, which allowed the inclusion of only one more species, pacific halibut, an important fishery
-# To further justify this, the training testing for pacific halibut was one of the better ones
-projspp <- modeldiag$sppocean 
-
-#boxplot <- data.frame(cbind(Presence_models = modeldiag$dev.pres, Biomass_models = modeldiag$dev.biomass)) 
-#boxplot <- melt(boxplot)
-#ggplot(boxplot, aes(x=factor(variable), y=value)) + geom_boxplot() + labs(x='', y='%deviance explained')
-
-	# look at species not selected
-#	hist(modeldiag$auc.tt)
-#	hist(modeldiag$auc)
-#	hist(modeldiag$dev.pres - modeldiag$dev.pres.null); abline(v=0.05, col='red')
-#	hist(modeldiag$dev.biomass - modeldiag$dev.biomass.null); abline(v=0.05, col='red')
-#	notselected <- modeldiag[!(modeldiag$sppocean %in% projspp), c('sppocean', 'auc.tt', 'dev.pres', 'dev.pres.null', 'dev.biomass', 'dev.biomass.null')]
-#		sum(notselected$auc.tt < 0.75, na.rm=TRUE)
-#		with(notselected, sum((dev.pres - dev.pres.null <= 0.05) & (dev.biomass - dev.biomass.null <= 0.05), na.rm=TRUE))
-#		with(notselected, sum(auc.tt < 0.75 & (dev.pres - dev.pres.null <= 0.05) & (dev.biomass - dev.biomass.null <= 0.05), na.rm=TRUE))
-#
-#	# those that would be selected using auc instead of auc.tt
-#	modeldiag$sppocean[modeldiag$auc.tt < 0.75 & modeldiag$auc >= 0.75 & !is.na(modeldiag$auc.tt) & !is.na(modeldiag$auc) & ((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.05) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.05))]
-
-# find the files with these species for our chosen model fit
-#files <- list.files(modfolder)
-#files <- files[grepl(paste('_', runtype, '_', sep=''), files) & grepl(paste(gsub('/|\\(|\\)', '', projspp), collapse='|'), gsub('/|\\(|\\)', '', files))] # have to strip out parentheses and slashes from file and taxon names so that grep doesn't interpret them
-#length(files) # should match length of projspp
-
-# Remove spp from planned projections IF the projection file already exists (OPTIONAL). 
-# If this step is skipped, the existing files will be overwritten.
-if(stayinregion) donefiles <- list.files(projfolder, pattern=paste(runtype, '_rcp', rcp, sep='')) # models made earlier
-if(!stayinregion) donefiles <- list.files(projfolder, pattern=paste(runtype, '_xreg_rcp', rcp, sep='')) # models made earlier
-
-# trim out prefix and suffix
-donespp <- gsub(paste('summproj_', runtype, '_', sep=''), '', gsub('.Rdata', '', donefiles)) 
-if(!stayinregion) donespp <- gsub('xreg_', '', donespp)
-donespp <- gsub(paste('rcp', rcp, '_', sep=''), '', donespp)
-
-# remove spp that we've already projected
-if(length(donespp)>0){
-	files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
-	projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
-}
-length(files)
-length(projspp)
 
 ###############################################
-# Choose the model fit and other flags to use_rerun this code for different options (rcp, seasons)
+# Choose projection options_rerun this code for different rcp and seasons
 ###############################################
+
 # rcp <- 26
 rcp <- 85
-# different seasons to project with (letters represent the first letter of month)
+
 # season <- 'jfm'
 # season <- 'amj'
 season <- 'jas'
@@ -126,13 +25,17 @@ season <- 'jas'
       
 load('data/projectionGrid_Feb24_2017.RData')# load projection grid to get lat/lon values
 clim.grid <- proj.grid # rename as a different 'proj.grid' imported below with bathymetry
-clim.grid$depth <- NULL
+clim.grid$depth <- NULL # depth not needed
 rm(proj.grid)
    
 modelrun <- c('bcc-csm1-1-m','bcc-csm1-1','CanESM2','CCSM4','CESM1-CAM5','CNRM-CM5','GFDL-CM3','GFDL-ESM2M','GFDL-ESM2G','GISS-E2-R','GISS-E2-H','IPSL-CM5A-LR','IPSL-CM5A-MR','MIROC-ESM','MPI-ESM-LR','NorESM1-ME')
+#latest projections were missing one of the models for rcp85 SBT: 'IPSL-CM5A-MR'
+#modelrun <- c('bcc-csm1-1', 'bcc-csm1-1-m','CanESM2','CCSM4','CESM1-CAM5','CNRM-CM5','GFDL-CM3', 'GFDL-ESM2M', 'GFDL-ESM2G','GISS-E2-R','GISS-E2-H','IPSL-CM5A-LR','MIROC-ESM','MPI-ESM-LR','NorESM1-ME')
+#modelrun <- c('bcc-csm1-1-m','CanESM2','CCSM4','CESM1-CAM5','CNRM-CM5','GFDL-CM3', 'GFDL-ESM2G','GISS-E2-R','IPSL-CM5A-LR','MPI-ESM-LR','NorESM1-ME')
+
 pred.metric <- c('max', 'min', 'mean')
 
-# Malin's functions for reading in the data_need separate function for the min/max files as they have an extra column
+# Functions for reading in the temperature data_need separate function for the min/max files as they have an extra column
 processlinesMean <- function(x){
   if(grepl('.....', x, fixed=TRUE)){
     return(rep(as.numeric(NA), 94))
@@ -151,174 +54,185 @@ processlinesMinMax <- function(x){
   }
 }
 
-# pred.folder <- 'IPSL-CM5A-MR_rcp85/' # temporary for checking update_eventually delete
- 
-if(rcp == 85){
-  pred.folder <- c('sst_rcp85/tos_Omon_','sbt_rcp85/')
-} else{
-  pred.folder <- c('sst_rcp26/tos_Omon_','sbt_rcp26/')
-}
+pred.folder <- 'tests/test7/'
 
-# For reading in all models for a particular type of data
+# For reading in all models for a particular type of data_minimum surface temps was not in habitat models
 tempsmeansbt <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
-tempsmeansst <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
+#tempsmeansst <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
 tempsminsbt <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
 tempsmaxsbt <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
-# tempsminsst <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun)) # Not in habitat models
-tempsmaxsst <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
+#tempsmaxsst <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
 
+i = 7
 # The loops below produce matrix where each column is a different climate model and the years are stacked in one vector
 # seasonal mean sbt
 for(i in 1:length(modelrun)){
-  print(i)
-  filename = paste('data/', pred.folder[2], modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[3], '.txt', sep="")
+  #print(i) 
+  #filename = paste('data/Temp proj files/', pred.folder[2], modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[3], '.txt', sep="")
+  filename = paste('data/Temp proj files/', pred.folder, modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[3], '.txt', sep="")
   filein <- readLines(filename)
   filein <- t(sapply(filein, processlinesMean))
   rownames(filein) <- NULL
+  print(paste(i, modelrun[i], dim(filein)[1], dim(filein)[2]))
   tempsmeansbt[,i] <- as.vector(filein)
-}
+} 
 # seasonal mean sst
 for(i in 1:length(modelrun)){
-  print(i)
-  filename = paste('data/', pred.folder[1], modelrun[i], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[3], '.txt', sep="")
+  #print(i) 
+  filename = paste('data/Temp proj files/', pred.folder[1], modelrun[i], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[3], '_no_scaling.txt', sep="")
   filein <- readLines(filename)
   filein <- t(sapply(filein, processlinesMean))
   rownames(filein) <- NULL
+  print(paste(i, modelrun[i], dim(filein)[1], dim(filein)[2]))
   tempsmeansst[,i] <- as.vector(filein)
-}
+} 
 # min annual sbt
 for(i in 1:length(modelrun)){
-  print(i)
-  filename = paste('data/', pred.folder[2], modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[2], '.txt', sep="")
+  #print(i)
+  #filename = paste('data/Temp proj files/', pred.folder[2], modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[2], '.txt', sep="")
+  filename = paste('data/Temp proj files/', pred.folder, modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[2], '.txt', sep="")
   filein <- readLines(filename)
   filein <- t(sapply(filein, processlinesMinMax))
   rownames(filein) <- NULL
   fileinVec <- as.vector(filein)
   fileinVec <- fileinVec[1:1281878]
+  print(paste(i, modelrun[i], dim(filein)[1], dim(filein)[2]))
   tempsminsbt[,i] <- fileinVec
 }
-# min annual sst_not used in habitat models so muted
-#for(i in 1:length(modelrun)){
-#  print(i)
-#  filename = paste('data/', pred.folder[1], modelrun[i], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[2], '.txt', sep="")
-#  filein <- readLines(filename)
-#  filein <- t(sapply(filein, processlinesMinMax))
-#  rownames(filein) <- NULL
-#  fileinVec <- as.vector(filein)
-#  fileinVec <- fileinVec[1:1281878]
-#  tempsminsst[,i] <- fileinVec
-#}
 # max annual sbt
 for(i in 1:length(modelrun)){
-  print(i)
-  filename = paste('data/', pred.folder[2], modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[1], '.txt', sep="")
+  #print(i)
+  #filename = paste('data/Temp proj files/', pred.folder[2], modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[1], '.txt', sep="")
+  filename = paste('data/Temp proj files/', pred.folder, modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[1], '.txt', sep="")
   filein <- readLines(filename)
   filein <- t(sapply(filein, processlinesMinMax))
   rownames(filein) <- NULL
   fileinVec <- as.vector(filein)
   fileinVec <- fileinVec[1:1281878]
+  print(paste(i, modelrun[i], dim(filein)[1], dim(filein)[2]))
   tempsmaxsbt[,i] <- fileinVec
 }
 # max annual sst
 for(i in 1:length(modelrun)){
-  print(i)
-  filename = paste('data/', pred.folder[1], modelrun[i], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[1], '.txt', sep="")
+  #print(i)
+  filename = paste('data/Temp proj files/', pred.folder[1], modelrun[i], '_rcp', rcp, '_r1i1p1_1950_2100.nc_regrid.nc_fill.nc_2006_2100_', season,'_', pred.metric[1], '_no_scaling.txt', sep="")
   filein <- readLines(filename)
   filein <- t(sapply(filein, processlinesMinMax))
   rownames(filein) <- NULL
   fileinVec <- as.vector(filein)
   fileinVec <- fileinVec[1:1281878]
+  print(paste(i, modelrun[i], dim(filein)[1], dim(filein)[2]))
   tempsmaxsst[,i] <- fileinVec
 }
-   
+    
 colnames(clim.grid) <- c('lonClimgrid', 'latClimgrid') 
 clim.grid$index <- c(1:nrow(clim.grid))
 load('data/ProjectionBathGrid_Feb27_2017.RData')# load bathymetry projection grid
 proj.grid$depth <- NULL # To reduce file size
 year.bin <- data.frame(year=2007:2100, bin=c(rep('2007-2020', 14), rep('2021-2040', 20), rep('2041-2060', 20), rep('2061-2080', 20), rep('2081-2100', 20))) # for making summary graphs in the loop
 cols = colorRampPalette(colors = c('dark blue', 'blue', 'white', 'red', 'dark red'))
-
-# Build and save all 16 prediction data sets_make some summary figures
-# The following arrays are muted b/c my CPU couldn't handle the large files, so I save a prediction file for each projection model, split by east vs. west
-# ....the array may work on amphiprion
-#pred_arrayEast <- array(numeric(), dim=c(7763648, 15, 16))
-#pred_arrayWest <- array(numeric(), dim=c(6187644, 15, 16))
+ 
+# Build and save all 16 prediction data sets_make some summary figures in 20 year bins
 for(i in 1:length(modelrun)){ 
   print(paste('Beginning model number ', i, ': ', modelrun[i], sep=''))
-  pred <- data.frame(cbind(clim.grid, year=rep(2007:2100, rep=94, each=13637), SBT.seasonal = tempsmeansbt[,i], SST.seasonal.mean = tempsmeansst[,i], SBT.min = tempsminsbt[,i], SBT.max = tempsmaxsbt[,i], SST.max = tempsmaxsst[,i]))
+  pred <- data.frame(cbind(clim.grid, year=rep(2007:2100, rep=94, each=13637), SBT.seasonal = tempsmeansbt[,i], SBT.min = tempsminsbt[,i], SBT.max = tempsmaxsbt[,i]))
+  #pred <- data.frame(cbind(clim.grid, year=rep(2007:2100, rep=94, each=13637), SST.seasonal.mean = tempsmeansst[,i], SST.max = tempsmaxsst[,i]))
   pred <- merge(pred, year.bin, by='year', all.x=T)  # Bin into 20 year periods to make some plots
   pred.bathE <- merge(pred, proj.grid[proj.grid$lonClimgrid > -105,], by=c('lonClimgrid', 'latClimgrid'), all.y = T, sort=F)
   pred.bathW <- merge(pred, proj.grid[proj.grid$lonClimgrid < -105,], by=c('lonClimgrid', 'latClimgrid'), all.y = T, sort=F)
   pred.bathE <- pred.bathE[order(pred.bathE$year, pred.bathE$index),] # reorder by year and index
   pred.bathW <- pred.bathW[order(pred.bathW$year, pred.bathW$index),] # reorder by year and index
   
-  aggE <- aggregate(list(sbt.seasonal = pred.bathE$SBT.seasonal, SST.seasonal.mean = pred.bathE$SST.seasonal.mean, SBT.min = pred.bathE$SBT.min,
-            SBT.max = pred.bathE$SBT.max, SST.max = pred.bathE$SST.max), by=list(year_range=pred.bathE$bin, latitude=pred.bathE$latBathgrid, longitude=pred.bathE$lonBathgrid), FUN=mean)
-  aggW <- aggregate(list(sbt.seasonal = pred.bathW$SBT.seasonal, SST.seasonal.mean = pred.bathW$SST.seasonal.mean, SBT.min = pred.bathW$SBT.min,
-            SBT.max = pred.bathW$SBT.max, SST.max = pred.bathW$SST.max), by=list(year_range=pred.bathW$bin, latitude=pred.bathW$latBathgrid, longitude=pred.bathW$lonBathgrid), FUN=mean)
+  #aggE <- aggregate(list(sbt.seasonal = pred.bathE$SBT.seasonal, SST.seasonal.mean = pred.bathE$SST.seasonal.mean, SBT.min = pred.bathE$SBT.min,
+   #         SBT.max = pred.bathE$SBT.max, SST.max = pred.bathE$SST.max), by=list(year_range=pred.bathE$bin, latitude=pred.bathE$latBathgrid, longitude=pred.bathE$lonBathgrid), FUN=mean)
+  #aggW <- aggregate(list(sbt.seasonal = pred.bathW$SBT.seasonal, SST.seasonal.mean = pred.bathW$SST.seasonal.mean, SBT.min = pred.bathW$SBT.min,
+   #         SBT.max = pred.bathW$SBT.max, SST.max = pred.bathW$SST.max), by=list(year_range=pred.bathW$bin, latitude=pred.bathW$latBathgrid, longitude=pred.bathW$lonBathgrid), FUN=mean)
+  aggE <- aggregate(list(SBT.seasonal = pred.bathE$SBT.seasonal, SBT.min = pred.bathE$SBT.min,
+                         SBT.max = pred.bathE$SBT.max), by=list(year_range=pred.bathE$bin, latitude=pred.bathE$latBathgrid, longitude=pred.bathE$lonBathgrid), FUN=mean)
+  aggW <- aggregate(list(SBT.seasonal = pred.bathW$SBT.seasonal, SBT.min = pred.bathW$SBT.min,
+                         SBT.max = pred.bathW$SBT.max), by=list(year_range=pred.bathW$bin, latitude=pred.bathW$latBathgrid, longitude=pred.bathW$lonBathgrid), FUN=mean)
   
   # 20yr. summary figures for each model
-  pdf(width=14, height=5, file=paste('figures/Temp_projections/', modelrun[i], '_rcp', rcp, '_20yr_tempProj.pdf', sep=''))
-  print(levelplot(sbt.seasonal~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('sbt.seasonal_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$sbt.seasonal-.1),max(aggE$sbt.seasonal+.1), length.out=40), 
+  #pdf(width=14, height=5, file=paste('figures/Temp_projections_noBiasCorr2/', modelrun[i], '_rcp', rcp, '_20yr_tempProj.pdf', sep=''))
+  pdf(width=14, height=5, file=paste('figures/TEST_7_deltas_SODAdepths_climatology', modelrun[i], '_rcp', rcp, '_20yr_tempProj.pdf', sep=''))
+   
+  print(levelplot(SBT.seasonal~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('sbt.seasonal_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SBT.seasonal-.01, na.rm=T),max(aggE$SBT.seasonal+.01, na.rm=T), length.out=40), 
             col.regions=cols, layout = c(5, 1), panel = function(...) {
               panel.fill(col = "light gray")
               panel.levelplot(...)
             }))  
-  print(levelplot(SST.seasonal.mean~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SST.seasonal.mean_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SST.seasonal.mean-.1),max(aggE$SST.seasonal.mean+.1), length.out=40), 
+  #print(levelplot(SST.seasonal.mean~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SST.seasonal.mean_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SST.seasonal.mean-.1),max(aggE$SST.seasonal.mean+.1), length.out=40), 
+   #         col.regions=cols, layout = c(5, 1), panel = function(...) {
+    #          panel.fill(col = "light gray")
+     #         panel.levelplot(...)
+      #      }))  
+  print(levelplot(SBT.min~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SBT.min_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SBT.min-.01, na.rm=T),max(aggE$SBT.min+.01, na.rm=T), length.out=40), 
             col.regions=cols, layout = c(5, 1), panel = function(...) {
               panel.fill(col = "light gray")
               panel.levelplot(...)
             }))  
-  print(levelplot(SBT.min~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SBT.min_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SBT.min-.1),max(aggE$SBT.min+.1), length.out=40), 
+  print(levelplot(SBT.max~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SBT.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SBT.max-.01, na.rm=T),max(aggE$SBT.max+.01, na.rm=T), length.out=40), 
             col.regions=cols, layout = c(5, 1), panel = function(...) {
               panel.fill(col = "light gray")
               panel.levelplot(...)
             }))  
-  print(levelplot(SBT.max~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SBT.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SBT.max-.1),max(aggE$SBT.max+.1), length.out=40), 
+  #print(levelplot(SST.max~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SST.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SST.max-.1),max(aggE$SST.max+.1), length.out=40), 
+   #         col.regions=cols, layout = c(5, 1), panel = function(...) {
+    #          panel.fill(col = "light gray")
+     #         panel.levelplot(...)
+      #      }))  
+  print(levelplot(SBT.seasonal~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('sbt.seasonal_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SBT.seasonal-.01, na.rm=T),max(aggW$SBT.seasonal+.01, na.rm=T), length.out=40), 
             col.regions=cols, layout = c(5, 1), panel = function(...) {
               panel.fill(col = "light gray")
               panel.levelplot(...)
             }))  
-  print(levelplot(SST.max~longitude*latitude|year_range, data=aggE, xlab=NULL, ylab=NULL, main=paste('SST.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggE$SST.max-.1),max(aggE$SST.max+.1), length.out=40), 
+  #print(levelplot(SST.seasonal.mean~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SST.seasonal.mean_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SST.seasonal.mean-.1),max(aggW$SST.seasonal.mean+.1), length.out=40), 
+   #         col.regions=cols, layout = c(5, 1), panel = function(...) {
+    #          panel.fill(col = "light gray")
+     #         panel.levelplot(...)
+      #      }))  
+  print(levelplot(SBT.min~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SBT.min_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SBT.min-.01, na.rm=T),max(aggW$SBT.min+.01, na.rm=T), length.out=40), 
             col.regions=cols, layout = c(5, 1), panel = function(...) {
               panel.fill(col = "light gray")
               panel.levelplot(...)
             }))  
-  print(levelplot(sbt.seasonal~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('sbt.seasonal_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$sbt.seasonal-.1),max(aggW$sbt.seasonal+.1), length.out=40), 
+  print(levelplot(SBT.max~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SBT.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SBT.max-.01, na.rm=T),max(aggW$SBT.max+.01, na.rm=T), length.out=40), 
             col.regions=cols, layout = c(5, 1), panel = function(...) {
               panel.fill(col = "light gray")
               panel.levelplot(...)
             }))  
-  print(levelplot(SST.seasonal.mean~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SST.seasonal.mean_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SST.seasonal.mean-.1),max(aggW$SST.seasonal.mean+.1), length.out=40), 
-            col.regions=cols, layout = c(5, 1), panel = function(...) {
-              panel.fill(col = "light gray")
-              panel.levelplot(...)
-            }))  
-  print(levelplot(SBT.min~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SBT.min_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SBT.min-.1),max(aggW$SBT.min+.1), length.out=40), 
-            col.regions=cols, layout = c(5, 1), panel = function(...) {
-              panel.fill(col = "light gray")
-              panel.levelplot(...)
-            }))  
-  print(levelplot(SBT.max~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SBT.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SBT.max-.1),max(aggW$SBT.max+.1), length.out=40), 
-            col.regions=cols, layout = c(5, 1), panel = function(...) {
-              panel.fill(col = "light gray")
-              panel.levelplot(...)
-            }))  
-  print(levelplot(SST.max~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SST.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SST.max-.1),max(aggW$SST.max+.1), length.out=40), 
-            col.regions=cols, layout = c(5, 1), panel = function(...) {
-              panel.fill(col = "light gray")
-              panel.levelplot(...)
-            }))  
+  #print(levelplot(SST.max~longitude*latitude|year_range, data=aggW, xlab=NULL, ylab=NULL, main=paste('SST.max_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(min(aggW$SST.max-.1),max(aggW$SST.max+.1), length.out=40), 
+   #         col.regions=cols, layout = c(5, 1), panel = function(...) {
+    #          panel.fill(col = "light gray")
+     #         panel.levelplot(...)
+      #      }))  
   dev.off()
 
-  filenameE <- paste('data/prediction_files/predictionEAST_rcp',rcp, '_', season, '_', modelrun[i], '.RData', sep='')
-  filenameW <- paste('data/prediction_files/predictionWEST_rcp',rcp, '_', season, '_', modelrun[i], '.RData', sep='')
-  save(pred.bathE, file=filenameE)
-  save(pred.bathW, file=filenameW)
-  #pred_arrayEast[,,i] <- pred.bathE
-  #pred_arrayWest[,,i] <- pred.bathW
+  #filenameE <- paste('data/prediction_files_noBiasCorr/predictionEASTnoBias_rcp',rcp, '_', season, '_', modelrun[i], '.RData', sep='')
+  #filenameW <- paste('data/prediction_files_noBiasCorr/predictionWESTnoBias_rcp',rcp, '_', season, '_', modelrun[i], '.RData', sep='')
+  #save(pred.bathE, file=filenameE)
+  #save(pred.bathW, file=filenameW)
 }
   
+# Plot the SODA SBT climatology 
+filename = paste('data/Temp proj files/', pred.folder, 'soda_btm.txt', sep="")
+clim <- read.table(filename)
+clim <- data.frame(cbind(clim.grid, clim))
+
+pdf(width=14, height=9, file='figures/TEST_3_SODA_climatology')
+print(levelplot(V1~lonClimgrid*latClimgrid, data=clim, xlab=NULL, ylab=NULL, main='SODA climatology_SBT', at = seq(min(clim$V1-.01, na.rm=T),max(clim$V1+.01, na.rm=T), length.out=40), 
+                col.regions=cols))
+dev.off()
+
+# To plot a specific area for troubleshooting_can delete this later 
+pred2 <- pred[pred$year > 2080,]
+print(levelplot(SBT.seasonal~lonClimgrid*latClimgrid|year, data=pred2, ylim=c(55,61), xlim=c(-172,-142), xlab=NULL, ylab=NULL, main=paste('sbt.seasonal_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(0,18, length.out=40), col.regions=cols))
+ 
+cols = colorRampPalette(colors = c('dark blue', 'blue', 'white', 'red', 'dark red'))
+depths <- proj.grid[proj.grid$longrid > -172 & proj.grid$longrid < -142 & proj.grid$latgrid > 55 & proj.grid$latgrid < 61,]
+levelplot(depth~longrid*latgrid, at = seq(min(depths$depth-.1),max(depths$depth+.1), length.out=40), col.regions=cols, data=depths)
+ 
+
 # =======================================================================================
 # CODE BELOW TO LOOK AT PROJECTION DATA A DIFFERENT WAY THAN THE ABOVE 20yr. SUMMARIES_this was used mainly for QAQC
 # =======================================================================================
@@ -363,7 +277,7 @@ cutpts <- c(min(forPlot, na.rm=T)-1, -10, -5, 40, 80, max(forPlot, na.rm=T)+1) #
 levelplot(X89 ~ lonClimgrid * latClimgrid, data = abc[!is.na(abc$X89),], at = cutpts, cuts = 6, pretty = T, col.regions = (rev(brewer.pal(9, "RdBu")))) 
 
 # =======================================================================================
-# Making species predictions
+# Making file that stores the region for each species' prediction
 # =======================================================================================
 
 # Make a file that lists, for each species, the dominant 'regionfact' to use with predictions
@@ -459,6 +373,81 @@ plot(latClimgrid~lonClimgrid, col='gray90', cex=.7, pch=16, xlab='Longitude', yl
 points(lat ~ lon, Projmap, type='l', lty=1, lwd=.7, col='gray50')
 arrows(x0=centPreds2$centLonBase, y0=centPreds2$centLatBase, x1=centPreds2$centLonProj, y1=centPreds2$centLatProj, length=.05, lwd=.8, col='dark blue')
 dev.off()
+
+# ==============================================================================
+# Figures of thermal habitat change for MAFMC_June 2017
+# Figs for changes in thermal habitat and also centroid vectors
+# ==============================================================================
+for(i in 1:length(mafmc)){
+  species = mafmc[i] 
+  print(paste("Starting figures for ", species))
+  pdf(width=10, height=11, file=paste('figures/MAFMC/', species, '_thermalHabitatChange.pdf', sep=''))
+  for(k in 4:19){
+    load(paste(projfolder, species, '_rcp', rcp[1], '_jas_prediction_AGG.RData', sep=''))
+    predBase <- pred.agg[pred.agg$year_range == '2007-2020',]
+    predProj <- pred.agg[pred.agg$year_range == '2081-2100',]
+    thermHab <- data.frame(cbind(latitude = predBase$latitude, longitude = predBase$longitude, predBase = predBase[,k], predProj = predProj[,k]))
+    thermHab <- thermHab[!(thermHab$latitude > 60.5 & thermHab$longitude > -64.62603),]
+    thermHab <- thermHab[!(thermHab$latitude > 55 & thermHab$longitude < -64.6 & thermHab$longitude > -75),]
+    thermHab <- thermHab[!thermHab$longitude < -82,]
+    thermHab <- thermHab[!thermHab$latitude < 26.6,]
+    thermHab <- thermHab[!(thermHab$latitude > 55 & thermHab$longitude < -64),]
+    
+    thermHab$diff <- thermHab$predProj - thermHab$predBase
+    thermHab$diffProp <- thermHab$diff/max(thermHab$predProj, thermHab$predBase)
+    # calculate centroid for initial and end periods_also calculate latitudinal centroid
+    # Do compass plots in all the major regions, with a species falling into a region based on freq. of capture
+    # Do separate for GOM?_Would need to be based on if species was caught there more than x times in survey I think.
+    centLatBase <- wtd.mean(thermHab$latitude, weights=thermHab$predBase) 
+    centLonBase <- wtd.mean(thermHab$longitude, weights=thermHab$predBase) 
+    centLatProj <- wtd.mean(thermHab$latitude, weights=thermHab$predProj) 
+    centLonProj <- wtd.mean(thermHab$longitude, weights=thermHab$predProj) 
+    
+    Projmap <- map('world', xlim=c(min(pred.agg$longitude),max(pred.agg$longitude)), ylim=c(min(pred.agg$latitude),max(pred.agg$latitude)),plot=FALSE) 
+    Projmap <- data.frame(lon=Projmap$x, lat=Projmap$y)
+    cols = colorRampPalette(colors = c('dark red', 'red', 'gray90', 'blue', 'dark blue'))
+    print(levelplot(diffProp ~ longitude*latitude, data=thermHab, xlab=NULL, ylab=NULL, main=paste('rcp', rcp[1], 'season_jas_Model', modelrun[k-3], species, sep='_'), 
+                    at = seq(-1, 1, length.out=20), col.regions=cols, panel = function(...) {
+                      panel.levelplot(...)
+                      grid.points(x=c(centLonBase), y=c(centLatBase), pch = 16)
+                      larrows(x0=centLonBase, y0=centLatBase, x1=centLonProj, y1=centLatProj, length=.1)
+                    }) + xyplot(lat ~ lon, Projmap, type='l', lty=1, lwd=.5, col='dark gray'))
+    #habChange = 100*(sum(thermHab$predProj)/sum(thermHab$predBase) - 1) # this is predicted change in biomass_as a percentage of the baseline period
+    #centPreds2[i,] <- data.frame(centLatBase=centLatBase, centLonBase=centLonBase, centLatProj=centLatProj, centLonProj=centLonProj, habChange=habChange)
+     
+    load(paste(projfolder, species, '_rcp', rcp[2], '_jas_prediction_AGG.RData', sep=''))
+    predBase <- pred.agg[pred.agg$year_range == '2007-2020',]
+    predProj <- pred.agg[pred.agg$year_range == '2081-2100',]
+    thermHab <- data.frame(cbind(latitude = predBase$latitude, longitude = predBase$longitude, predBase = predBase[,k], predProj = predProj[,k]))
+    thermHab <- thermHab[!(thermHab$latitude > 60.5 & thermHab$longitude > -64.62603),]
+    thermHab <- thermHab[!(thermHab$latitude > 55 & thermHab$longitude < -64.6 & thermHab$longitude > -75),]
+    thermHab <- thermHab[!thermHab$longitude < -82,]
+    thermHab <- thermHab[!thermHab$latitude < 26.6,]
+    thermHab <- thermHab[!(thermHab$latitude > 55 & thermHab$longitude < -64),]
+    
+    thermHab$diff <- thermHab$predProj - thermHab$predBase
+    thermHab$diffProp <- thermHab$diff/max(thermHab$predProj, thermHab$predBase)
+    # calculate centroid for initial and end periods_also calculate latitudinal centroid
+    # Do compass plots in all the major regions, with a species falling into a region based on freq. of capture
+    # Do separate for GOM?_Would need to be based on if species was caught there more than x times in survey I think.
+    centLatBase <- wtd.mean(thermHab$latitude, weights=thermHab$predBase) 
+    centLonBase <- wtd.mean(thermHab$longitude, weights=thermHab$predBase) 
+    centLatProj <- wtd.mean(thermHab$latitude, weights=thermHab$predProj) 
+    centLonProj <- wtd.mean(thermHab$longitude, weights=thermHab$predProj) 
+    
+    Projmap <- map('world', xlim=c(min(pred.agg$longitude),max(pred.agg$longitude)), ylim=c(min(pred.agg$latitude),max(pred.agg$latitude)),plot=FALSE) 
+    Projmap <- data.frame(lon=Projmap$x, lat=Projmap$y)
+    cols = colorRampPalette(colors = c('dark red', 'red', 'gray90', 'blue', 'dark blue'))
+    print(levelplot(diffProp ~ longitude*latitude, data=thermHab, xlab=NULL, ylab=NULL, main=paste('rcp', rcp[2], 'season_jas_Model', modelrun[k-3], species, sep='_'), 
+                    at = seq(-1, 1, length.out=20), col.regions=cols, panel = function(...) {
+                      panel.levelplot(...)
+                      grid.points(x=c(centLonBase), y=c(centLatBase), pch = 16)
+                      larrows(x0=centLonBase, y0=centLatBase, x1=centLonProj, y1=centLatProj, length=.1)
+                    }) + xyplot(lat ~ lon, Projmap, type='l', lty=1, lwd=.5, col='dark gray'))
+    
+  }
+  dev.off()
+}
 
 # =================================================================================
 # Below here is Malin's original code
