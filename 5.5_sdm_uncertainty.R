@@ -172,10 +172,6 @@ for(i in 1:length(allspp)){
     
   # ESTIMATING MODEL UNCERTAINTY ====================================================================================================
   
-  # FOR DECLARING SOMETHING 'SUITABLE HABITAT' FOR MAPPING, SAY ANYTHING THAT IS ABOVE THE FACTOR LEVEL EFFECT FOR THE REGION USED FOR PREDICTION
-  # THAT WOULD MEAN THAT THE CLIMATE/BATHYMETRY OF THAT CELL HAS A POSITIVE EFFECT ON CATCH
-  # THE IS BARING IN MIND AS THOSE FACTOR LEVEL EFFECTS ARE BASICALLY CRUDE AVERAGE WTCPUE, ALTHOUGH I THINK THE EFFECT VALUE INTERACTS WITH THE HABITAT FACTOR TO SOME EXTENT
-  
   pd <- proj.grid 
   pd$rugosity <- log(pd$rugosity + 1)
   # Below some arbitrary space fillers while I'm waiting for climate files to be completed
@@ -198,8 +194,12 @@ for(i in 1:length(allspp)){
   if(mean(haulsMod$longrid) < -100) {
     pd <- pd[pd$lonBathgrid < -100]
   }
-
-  Xp.1 <- predict(mod1, pd, type='lpmatrix') # a prediction matrix, needed for ultimately getting variance estimates for quantities derived from the model
+  
+  
+  # a prediction matrix, needed for ultimately getting variance estimates for quantities derived from the model
+  # each row is corresponding to a row of prediction data set, these values get multiplied by individual curve coefficient
+  # values and then those values get summed to get a prediction for that row of data
+  Xp.1 <- predict(mod1, pd, type='lpmatrix') 
   Xp.2 <- predict(mod2, pd, type='lpmatrix') 
   # matrix that gets multiplied by model coefficients to yields predictions at new values in 'pd'_assigns value for each section of each curve, for each row of newdata to predict
   # The lpmatrix breaks down each curve sections influence on the prediction.
@@ -252,16 +252,6 @@ for(i in 1:length(allspp)){
   points(latBathgrid~lonBathgrid, cex=.1, col='red', data=uncer.grid[uncer.grid$suitable == T,])
   points(mean(centroid$latcentroid)~mean(centroid$loncentroid), col='black', cex=2, pch=8)
    
-  # GO THROUGH LOOP ONE MORE TIME CAREFULLY AND MAKE SURE ITS WORKING RIGHT!!!!_LABEL (and rescale levelplots) GRAPHS etc.
-  #r2.biomass produced a couple NAs last run through
-  # Rescale levelplots so a light gray is the lowest value
-  # Add some way to see how realistic the predicted values are with observed values_this is done graphically but.......
-  # How to get better predicted values......some sort of rescaling based on the distribution of observed vs. predicted? 
-  # Make internal loop for going through each prediction grid (n=39)
-  # For each run I really only need to save the centroid value and sum wtcpue predictions; plus this must be done at the regional level too for U.S. locations
-  # Create a third plot showing historical average cpue (averaged over seasons) within the bathgrid cells? Just for a rough comparison....
-  # Do a loop with more species and then do some plots looking at sample size effects on dev.explained, smear, etc.
-  # Read up on the dismo diagnostics above
   dev.off()
 }
 

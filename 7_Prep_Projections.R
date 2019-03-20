@@ -4,19 +4,13 @@
 ## Set working directory
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
-	projfolder = 'CEmodels_proj'
-	modfolder = 'CEmodels'
 	climgridfolder <- 'data/'
 }
 if(Sys.info()["user"] == "jamesmorley"){
   setwd('/Users/jamesmorley/Documents/project_velocity')
-  projfolder = 'output/CEmodels_proj_May2017/'
-  modfolder <- 'output/CEmodels/'
   climgridfolder <- 'data/'
 }
 
-require(mgcv)
-require(Hmisc)
 library(latticeExtra)
 library(maps)
 library(geosphere)
@@ -34,8 +28,6 @@ modeldiag <- modeldiag[!is.na(modeldiag$auc.tt),] # 700 species
 #With additional criteria for inclusion
 modeldiag <- modeldiag[!modeldiag$auc.tt < 0.75,] # 686 species
 
-# UPDATE THE TEXT, INCLUDING THE MEAN/MEDIAN sdm MODEL DIAGNOSTIC FEATURES
-
 projspp <- modeldiag$sppocean 
 # save(modeldiag, file='temp_prefs/sppList.RData') # For estimating temp prefs for all spp (e.g. Patrick's paper)
 
@@ -48,7 +40,6 @@ projspp <- modeldiag$sppocean
 #	hist(modeldiag$auc)
 #	hist(modeldiag$dev.pres - modeldiag$dev.pres.null); abline(v=0.05, col='red')
 #	hist(modeldiag$dev.biomass - modeldiag$dev.biomass.null); abline(v=0.05, col='red')
-
 
 # =======================================================================================
 # Making file that stores the region for each species' prediction
@@ -81,8 +72,9 @@ save(projspp, regionFreq, file='data/speciesProjectionList.RData')
 # Choose projection options_rerun this code for different rcp and seasons
 ###############################################
  
-rcp <- 26
-#rcp <- 85
+#rcp <- 26
+#rcp <- 45
+rcp <- 85
 
 # season <- 'jfm'
 # season <- 'amj'
@@ -98,8 +90,8 @@ clim.grid <- proj.grid # rename as a different 'proj.grid' imported below with b
 clim.grid$depth <- NULL # depth not needed
 rm(proj.grid)
    
-modelrun <- c('bcc-csm1-1-m','bcc-csm1-1','CanESM2','CCSM4','CESM1-CAM5','CNRM-CM5','GFDL-CM3','GFDL-ESM2M','GFDL-ESM2G','GISS-E2-R','GISS-E2-H','IPSL-CM5A-LR','IPSL-CM5A-MR','MIROC-ESM','MPI-ESM-LR','NorESM1-ME')
-#modelrun <- c('bcc-csm1-1-m','bcc-csm1-1','CESM1-CAM5','GFDL-CM3','GFDL-ESM2M','GFDL-ESM2G','GISS-E2-R','GISS-E2-H','IPSL-CM5A-LR','MIROC-ESM','MPI-ESM-LR')
+modelrun <- c('bcc-csm1-1-m','bcc-csm1-1','CanESM2','CCSM4','CESM1-CAM5','CNRM-CM5','GFDL-CM3','GFDL-ESM2M','GFDL-ESM2G','GISS-E2-R','GISS-E2-H','HadGEM2-ES','IPSL-CM5A-LR','IPSL-CM5A-MR','MIROC-ESM','MIROC5','MPI-ESM-LR','NorESM1-ME')
+modelrun <- c('HadGEM2-ES','MIROC5')
 
 pred.metric <- c('max', 'min', 'mean')
 
@@ -120,14 +112,18 @@ processlinesMinMax <- function(x){
     x <- sub('^ +', '', x) # remove leading whitespace
     return(as.numeric(unlist(strsplit(x, split=' +'))))
   }
-}
+} 
 
-if(rcp == 85){
+if(rcp==85){
   pred.folder <- c('sst_rcp85_final/tos_Omon_','sbt_rcp85_final/')
-} else{
+} 
+if(rcp==45){
+  pred.folder <- c('sst_rcp45_final/tos_Omon_','sbt_rcp45_final/')
+}
+if(rcp==26){
   pred.folder <- c('sst_rcp26_final/tos_Omon_','sbt_rcp26_final/')
 }
- 
+
 # For reading in all models for a particular type of data_minimum surface temps was not in habitat models
 tempsmeansbt <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
 tempsmeansst <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
@@ -136,7 +132,7 @@ tempsmaxsbt <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
 tempsmaxsst <- matrix(as.numeric(NA), nrow=1281878, ncol=length(modelrun))
 
 # The loops below produce matrix where each column is a different climate model and the years are stacked in one vector
-# seasonal mean sbt
+# seasonal mean sbt 
 for(i in 1:length(modelrun)){
   print(i) 
   filename = paste('data/Temp proj files/', pred.folder[2], modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[3], '.txt', sep="")
@@ -160,16 +156,28 @@ for(i in 1:length(modelrun)){
 for(i in 1:length(modelrun)){
   print(i)
   filename = paste('data/Temp proj files/', pred.folder[2], modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[2], '.txt', sep="")
+  #filenameB = paste('data/Temp proj files/rcp45_nofill.txt')
   filein <- readLines(filename)
+  #fileinB <- readLines(filenameB)
+  #fileinB <- fileinB[!fileinB==""]
+  #abc <- fileinB[218193:231828]
+  #length(abc) 
   filein <- t(sapply(filein, processlinesMinMax))
+  #abc <- t(sapply(abc, processlinesMinMax))
   rownames(filein) <- NULL
+  #rownames(abc) <- NULL
+  #summary(abc)
+  #cde <- data.frame(cbind(abc, clim.grid[-13637,]))
+  #levelplot(X2~longrid*latgrid, data=cde)
+  #plot(latgrid~longrid, cex=.1, cde)
+  #points(latgrid~longrid, col='red', cex=.1, cde[is.na(cde$X2),])
   fileinVec <- as.vector(filein)
   fileinVec <- fileinVec[1:1281878]
   print(paste(i, modelrun[i], dim(filein)[1], dim(filein)[2]))
   tempsminsbt[,i] <- fileinVec
 }
 # max annual sbt
-for(i in 1:length(modelrun)){
+for(i in 1:length(modelrun)){#length(modelrun)){
   print(i)
   filename = paste('data/Temp proj files/', pred.folder[2], modelrun[i], '_rcp', rcp, '_fill.nc_2006_2100_', season,'_', pred.metric[1], '.txt', sep="")
   filein <- readLines(filename)
@@ -200,7 +208,7 @@ proj.grid$depth <- NULL # To reduce file size
 year.bin <- data.frame(year=2007:2100, bin=c(rep('2007-2020', 14), rep('2021-2040', 20), rep('2041-2060', 20), rep('2061-2080', 20), rep('2081-2100', 20))) # for making summary graphs in the loop
 cols = colorRampPalette(colors = c('dark blue', 'blue', 'white', 'red', 'dark red'))
  
-# Build and save all 16 prediction data sets_make some summary figures in 20 year bins
+# Build and save all 18 prediction data sets_make some summary figures in 20 year bins
 for(i in 1:length(modelrun)){ 
   print(paste('Beginning model number ', i, ': ', modelrun[i], sep=''))
   pred <- data.frame(cbind(clim.grid, year=rep(2007:2100, rep=94, each=13637), SBT.seasonal = tempsmeansbt[,i], SBT.min = tempsminsbt[,i], SBT.max = tempsmaxsbt[,i], SST.seasonal.mean = tempsmeansst[,i], SST.max = tempsmaxsst[,i]))
@@ -275,14 +283,14 @@ for(i in 1:length(modelrun)){
   save(pred.bathE, file=filenameE)
   save(pred.bathW, file=filenameW)
 }
-  
-# To plot a specific area for troubleshooting_can delete this later 
-pred2 <- pred[pred$year > 2080,]
-print(levelplot(SBT.seasonal~lonClimgrid*latClimgrid|year, data=pred2, ylim=c(55,61), xlim=c(-172,-142), xlab=NULL, ylab=NULL, main=paste('sbt.seasonal_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(0,18, length.out=40), col.regions=cols))
+   
+# To plot a specific area for troubleshooting_can delete this later ==================
+#pred2 <- pred[pred$year > 2080,]
+#print(levelplot(SBT.seasonal~lonClimgrid*latClimgrid|year, data=pred2, ylim=c(55,61), xlim=c(-172,-142), xlab=NULL, ylab=NULL, main=paste('sbt.seasonal_rcp', rcp, '  season:',season, '  Model:', modelrun[i]), at = seq(0,18, length.out=40), col.regions=cols))
  
-cols = colorRampPalette(colors = c('dark blue', 'blue', 'white', 'red', 'dark red'))
-depths <- proj.grid[proj.grid$longrid > -172 & proj.grid$longrid < -142 & proj.grid$latgrid > 55 & proj.grid$latgrid < 61,]
-levelplot(depth~longrid*latgrid, at = seq(min(depths$depth-.1),max(depths$depth+.1), length.out=40), col.regions=cols, data=depths)
+#cols = colorRampPalette(colors = c('dark blue', 'blue', 'white', 'red', 'dark red'))
+#depths <- proj.grid[proj.grid$longrid > -172 & proj.grid$longrid < -142 & proj.grid$latgrid > 55 & proj.grid$latgrid < 61,]
+#levelplot(depth~longrid*latgrid, at = seq(min(depths$depth-.1),max(depths$depth+.1), length.out=40), col.regions=cols, data=depths)
  
 
 # =======================================================================================
@@ -329,154 +337,6 @@ cutpts <- c(min(forPlot, na.rm=T)-1, -10, -5, 40, 80, max(forPlot, na.rm=T)+1) #
 levelplot(X89 ~ lonClimgrid * latClimgrid, data = abc[!is.na(abc$X89),], at = cutpts, cuts = 6, pretty = T, col.regions = (rev(brewer.pal(9, "RdBu")))) 
 
 
-# ========================================================================
-# Sums up projections of all species from script 7b
-# ========================================================================
-
-# Make figure of projections in 20 year blocks for each species
-pdf(width=14, height=5, file=paste('figures/speciesProjections/', 'species_projections3.pdf', sep=''))
-for(i in 401:658){
-  load(paste(projfolder, '_', projspp[i], '_', modelrun[6], '_', season, '_', rcp, '_prediction_AGG.RData', sep=''))
-  Projmap <- map('world', xlim=c(min(pred.agg$longitude),max(pred.agg$longitude)), ylim=c(min(pred.agg$latitude),max(pred.agg$latitude)),plot=FALSE) 
-  Projmap <- data.frame(lon=Projmap$x, lat=Projmap$y)
-  cols = colorRampPalette(colors = c('gray90', 'blue', 'dark blue', 'black'))
-  #pred.agg$logPred <- log(pred.agg$pred.mean + 1)
-  print(levelplot(pred.mean ~ longitude*latitude|year_range, data=pred.agg, xlab=NULL, ylab=NULL, main=paste('rcp', rcp, 'season' ,season, 'Model', modelrun[6], projspp[i], sep='_'), 
-      at = seq(0,max(pred.agg$pred.mean+.00001), length.out=20), col.regions=cols, layout = c(5, 1)) + xyplot(lat ~ lon, Projmap, type='l', lty=1, lwd=.05, col='dark gray')) 
-  #levelplot(logPred ~ longitude*latitude|year_range, data=pred.agg, xlab=NULL, ylab=NULL, main=paste('rcp', rcp, 'season' ,season, 'Model', modelrun[i], projspp[i], 'LOGGED', sep='_'), 
-  #          at = seq(0,max(pred.agg$logPred+.0001), length.out=20), col.regions=cols, layout = c(5, 1)) + xyplot(lat ~ lon, Projmap, type='l', lty=1, lwd=.05, col='dark gray') 
-}
-dev.off()
- 
-# Figs for changes in thermal habitat and also centroid vectors
-centPreds2 <- data.frame(centLatBase=numeric(), centLonBase=numeric(), centLatProj=numeric(), centLonProj=numeric(), habChange=numeric())
-pdf(width=10, height=11, file=paste('figures/speciesProjections/', 'species_thermalHabitatChange2.pdf', sep=''))
-for(i in 1:length(projspp)){
-  load(paste(projfolder, '_', projspp[i], '_', modelrun[6], '_', season, '_', rcp, '_prediction_AGG.RData', sep=''))
-  predBase <- pred.agg[pred.agg$year_range == '2007-2020',]
-  predProj <- pred.agg[pred.agg$year_range == '2081-2100',]
-  thermHab <- data.frame(cbind(latitude = predBase$latitude, longitude = predBase$longitude, predBase = predBase$pred.mean, predProj = predProj$pred.mean))
-  thermHab <- thermHab[!(thermHab$latitude > 60.5 & thermHab$longitude > -64.62603),]
-  thermHab <- thermHab[!(thermHab$latitude > 55 & thermHab$longitude < -64.6 & thermHab$longitude > -75),]
-  thermHab$diff <- thermHab$predProj - thermHab$predBase
-  thermHab$diffProp <- thermHab$diff/max(thermHab$predProj, thermHab$predBase)
-  # calculate centroid for initial and end periods_also calculate latitudinal centroid
-  # Do compass plots in all the major regions, with a species falling into a region based on freq. of capture
-  # Do separate for GOM?_Would need to be based on if species was caught there more than x times in survey I think.
-  centLatBase <- wtd.mean(thermHab$latitude, weights=thermHab$predBase) 
-  centLonBase <- wtd.mean(thermHab$longitude, weights=thermHab$predBase) 
-  centLatProj <- wtd.mean(thermHab$latitude, weights=thermHab$predProj) 
-  centLonProj <- wtd.mean(thermHab$longitude, weights=thermHab$predProj) 
-    
-  Projmap <- map('world', xlim=c(min(pred.agg$longitude),max(pred.agg$longitude)), ylim=c(min(pred.agg$latitude),max(pred.agg$latitude)),plot=FALSE) 
-  Projmap <- data.frame(lon=Projmap$x, lat=Projmap$y)
-  cols = colorRampPalette(colors = c('dark red', 'red', 'gray90', 'blue', 'dark blue'))
-  print(levelplot(diffProp ~ longitude*latitude, data=thermHab, xlab=NULL, ylab=NULL, main=paste('rcp', rcp, 'season' ,season, 'Model', modelrun[6], projspp[i], sep='_'), 
-                  at = seq(-1, 1, length.out=20), col.regions=cols, panel = function(...) {
-              panel.levelplot(...)
-              grid.points(x=c(centLonBase), y=c(centLatBase), pch = 16)
-              larrows(x0=centLonBase, y0=centLatBase, x1=centLonProj, y1=centLatProj, length=.1)
-            }) + xyplot(lat ~ lon, Projmap, type='l', lty=1, lwd=.5, col='dark gray'))
-  habChange = 100*(sum(thermHab$predProj)/sum(thermHab$predBase) - 1) # this is predicted change in biomass_as a percentage of the baseline period
-  centPreds2[i,] <- data.frame(centLatBase=centLatBase, centLonBase=centLonBase, centLatProj=centLatProj, centLonProj=centLonProj, habChange=habChange)
-}
-dev.off()
-   
-centPreds2$species <- projspp # add species names
-# Some other values that may be eventually useful for compass plots_still haven't figured out how to do them
-centPreds$vectDist <- distHaversine(p1=matrix(cbind(centPreds$centLonBase, centPreds$centLatBase), ncol=2), p2=matrix(cbind(centPreds$centLonProj, centPreds$centLatProj), ncol=2)) / 1000# distance of vectors in km (I think in km anyway)
-centPreds$vectAng <- bearingRhumb(p1=matrix(cbind(centPreds$centLonBase, centPreds$centLatBase), ncol=2), p2=matrix(cbind(centPreds$centLonProj, centPreds$centLatProj), ncol=2))
-centPreds$radians <- NISTdegTOradian(centPreds$vectAng) # convert angle to radians_I think zero is the right x-axis
-centPreds$slope <- (centPreds$centLatProj - centPreds$centLatBase)/(centPreds$centLonProj - centPreds$centLonBase)# This probably is not appropriate
-
-save(centPreds, file='output/centPreds.RData')
-
-# Plotting all the species vectors together
-load('data/ProjectionBathGrid_Feb27_2017.RData')# load bathymetry projection grid
-Projmap <- map('world', xlim=c(min(proj.grid$lonBathgrid),max(proj.grid$lonBathgrid)), ylim=c(min(proj.grid$latBathgrid),max(proj.grid$latBathgrid)),plot=FALSE) 
-Projmap <- data.frame(lon=Projmap$x, lat=Projmap$y)
-pdf(width=14, height=8, file=paste('figures/speciesProjections/', 'species_centroid_shifts2.pdf', sep=''))
-proj.grid2 <- proj.grid[!(proj.grid$latClimgrid > 60.5 & proj.grid$lonClimgrid > -64.62603),]
-proj.grid2 <- proj.grid2[!(proj.grid2$latClimgrid > 55 & proj.grid2$lonClimgrid < -64.6 & proj.grid2$lonClimgrid > -75),]
-plot(latClimgrid~lonClimgrid, col='gray90', cex=.7, pch=16, xlab='Longitude', ylab='Latitude', main='Predicted centroid shifts for 658 species', data=proj.grid2) 
-points(lat ~ lon, Projmap, type='l', lty=1, lwd=.7, col='gray50')
-arrows(x0=centPreds2$centLonBase, y0=centPreds2$centLatBase, x1=centPreds2$centLonProj, y1=centPreds2$centLatProj, length=.05, lwd=.8, col='dark blue')
-dev.off()
-
-# ==============================================================================
-# Figures of thermal habitat change for MAFMC_June 2017
-# Figs for changes in thermal habitat and also centroid vectors
-# ==============================================================================
-for(i in 1:length(mafmc)){
-  species = mafmc[i] 
-  print(paste("Starting figures for ", species))
-  pdf(width=10, height=11, file=paste('figures/MAFMC/', species, '_thermalHabitatChange.pdf', sep=''))
-  for(k in 4:19){
-    load(paste(projfolder, species, '_rcp', rcp[1], '_jas_prediction_AGG.RData', sep=''))
-    predBase <- pred.agg[pred.agg$year_range == '2007-2020',]
-    predProj <- pred.agg[pred.agg$year_range == '2081-2100',]
-    thermHab <- data.frame(cbind(latitude = predBase$latitude, longitude = predBase$longitude, predBase = predBase[,k], predProj = predProj[,k]))
-    thermHab <- thermHab[!(thermHab$latitude > 60.5 & thermHab$longitude > -64.62603),]
-    thermHab <- thermHab[!(thermHab$latitude > 55 & thermHab$longitude < -64.6 & thermHab$longitude > -75),]
-    thermHab <- thermHab[!thermHab$longitude < -82,]
-    thermHab <- thermHab[!thermHab$latitude < 26.6,]
-    thermHab <- thermHab[!(thermHab$latitude > 55 & thermHab$longitude < -64),]
-    
-    thermHab$diff <- thermHab$predProj - thermHab$predBase
-    thermHab$diffProp <- thermHab$diff/max(thermHab$predProj, thermHab$predBase)
-    # calculate centroid for initial and end periods_also calculate latitudinal centroid
-    # Do compass plots in all the major regions, with a species falling into a region based on freq. of capture
-    # Do separate for GOM?_Would need to be based on if species was caught there more than x times in survey I think.
-    centLatBase <- wtd.mean(thermHab$latitude, weights=thermHab$predBase) 
-    centLonBase <- wtd.mean(thermHab$longitude, weights=thermHab$predBase) 
-    centLatProj <- wtd.mean(thermHab$latitude, weights=thermHab$predProj) 
-    centLonProj <- wtd.mean(thermHab$longitude, weights=thermHab$predProj) 
-    
-    Projmap <- map('world', xlim=c(min(pred.agg$longitude),max(pred.agg$longitude)), ylim=c(min(pred.agg$latitude),max(pred.agg$latitude)),plot=FALSE) 
-    Projmap <- data.frame(lon=Projmap$x, lat=Projmap$y)
-    cols = colorRampPalette(colors = c('dark red', 'red', 'gray90', 'blue', 'dark blue'))
-    print(levelplot(diffProp ~ longitude*latitude, data=thermHab, xlab=NULL, ylab=NULL, main=paste('rcp', rcp[1], 'season_jas_Model', modelrun[k-3], species, sep='_'), 
-                    at = seq(-1, 1, length.out=20), col.regions=cols, panel = function(...) {
-                      panel.levelplot(...)
-                      grid.points(x=c(centLonBase), y=c(centLatBase), pch = 16)
-                      larrows(x0=centLonBase, y0=centLatBase, x1=centLonProj, y1=centLatProj, length=.1)
-                    }) + xyplot(lat ~ lon, Projmap, type='l', lty=1, lwd=.5, col='dark gray'))
-    #habChange = 100*(sum(thermHab$predProj)/sum(thermHab$predBase) - 1) # this is predicted change in biomass_as a percentage of the baseline period
-    #centPreds2[i,] <- data.frame(centLatBase=centLatBase, centLonBase=centLonBase, centLatProj=centLatProj, centLonProj=centLonProj, habChange=habChange)
-     
-    load(paste(projfolder, species, '_rcp', rcp[2], '_jas_prediction_AGG.RData', sep=''))
-    predBase <- pred.agg[pred.agg$year_range == '2007-2020',]
-    predProj <- pred.agg[pred.agg$year_range == '2081-2100',]
-    thermHab <- data.frame(cbind(latitude = predBase$latitude, longitude = predBase$longitude, predBase = predBase[,k], predProj = predProj[,k]))
-    thermHab <- thermHab[!(thermHab$latitude > 60.5 & thermHab$longitude > -64.62603),]
-    thermHab <- thermHab[!(thermHab$latitude > 55 & thermHab$longitude < -64.6 & thermHab$longitude > -75),]
-    thermHab <- thermHab[!thermHab$longitude < -82,]
-    thermHab <- thermHab[!thermHab$latitude < 26.6,]
-    thermHab <- thermHab[!(thermHab$latitude > 55 & thermHab$longitude < -64),]
-    
-    thermHab$diff <- thermHab$predProj - thermHab$predBase
-    thermHab$diffProp <- thermHab$diff/max(thermHab$predProj, thermHab$predBase)
-    # calculate centroid for initial and end periods_also calculate latitudinal centroid
-    # Do compass plots in all the major regions, with a species falling into a region based on freq. of capture
-    # Do separate for GOM?_Would need to be based on if species was caught there more than x times in survey I think.
-    centLatBase <- wtd.mean(thermHab$latitude, weights=thermHab$predBase) 
-    centLonBase <- wtd.mean(thermHab$longitude, weights=thermHab$predBase) 
-    centLatProj <- wtd.mean(thermHab$latitude, weights=thermHab$predProj) 
-    centLonProj <- wtd.mean(thermHab$longitude, weights=thermHab$predProj) 
-    
-    Projmap <- map('world', xlim=c(min(pred.agg$longitude),max(pred.agg$longitude)), ylim=c(min(pred.agg$latitude),max(pred.agg$latitude)),plot=FALSE) 
-    Projmap <- data.frame(lon=Projmap$x, lat=Projmap$y)
-    cols = colorRampPalette(colors = c('dark red', 'red', 'gray90', 'blue', 'dark blue'))
-    print(levelplot(diffProp ~ longitude*latitude, data=thermHab, xlab=NULL, ylab=NULL, main=paste('rcp', rcp[2], 'season_jas_Model', modelrun[k-3], species, sep='_'), 
-                    at = seq(-1, 1, length.out=20), col.regions=cols, panel = function(...) {
-                      panel.levelplot(...)
-                      grid.points(x=c(centLonBase), y=c(centLatBase), pch = 16)
-                      larrows(x0=centLonBase, y0=centLatBase, x1=centLonProj, y1=centLatProj, length=.1)
-                    }) + xyplot(lat ~ lon, Projmap, type='l', lty=1, lwd=.5, col='dark gray'))
-    
-  }
-  dev.off()
-}
 
 # =================================================================================
 # Below here is Malin's original code

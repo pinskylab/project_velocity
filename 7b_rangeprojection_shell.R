@@ -1,4 +1,4 @@
-# Code for making species predictions on Amphiprion_with a shell script
+# Code for making species projections on Amphiprion_with a shell script
 args <- commandArgs(trailingOnly=T)
 print(args)
 myalcnt1 <- as.numeric(args[1])

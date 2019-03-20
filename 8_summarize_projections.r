@@ -1,3 +1,5 @@
+# I think this script is operating on the original projections output, so is probably no longer needed.
+
 ## Set working directories
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
@@ -10,8 +12,6 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	modfolder <- 'CEmodels'
 	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages (chron and ncdf4)
 	}
-# could add code for Lauren's working directory here
-
 
 #######################
 ## Script-wide flags ##

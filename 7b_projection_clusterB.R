@@ -1,3 +1,4 @@
+# These first 4 lines are used to make arguments for using a shell script on the cluster system_if not using a shell script they are not necessary
 args <- commandArgs(trailingOnly=T)
 print(args)
 myalcnt1 <- as.numeric(args[1])
@@ -6,12 +7,13 @@ myalcnt1 <- as.numeric(args[1])
 require(mgcv)
  
 projfolder <- 'CEmodels_proj_May2017/'
-RCP <- c(26,85)
+RCP <- c(26,85) # rcp 45 can now be added
 season <- 'jas'
+# Below there are two new climate models that could be added here
 modelrun <- c('bcc-csm1-1-m','bcc-csm1-1','CanESM2','CCSM4','CESM1-CAM5','CNRM-CM5','GFDL-CM3','GFDL-ESM2M','GFDL-ESM2G','GISS-E2-R','GISS-E2-H','IPSL-CM5A-LR','IPSL-CM5A-MR','MIROC-ESM','MPI-ESM-LR','NorESM1-ME')
 pred.metric <- c('max', 'min', 'mean')
  
-load('speciesProjectionList.RData')
+load('speciesProjectionList.RData') # A list of species with corresponding regionfact values for each species 
 
 # Begin loop to make a prediction for each species and save each species individually
 

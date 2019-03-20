@@ -1,3 +1,18 @@
+*.RData
+*.rdata
+*.Rdata
+
+*.gz
+*.nc
+*.csv
+*.txt
+*.xls
+*.tar
+*.pdf
+*.docx
+*.png
+*.Rout
+
 
 .Rapp.history
 
@@ -34,3 +49,23 @@ data/sbt_rcp85/*
 data/sbt_rcp26/*
 data/sst_rcp85/*
 data/sst_rcp26/*
+
+*.Rout
+
+*.Rout
+
+6_model_fitting_loop_update_PART2.Rout
+
+*.Rout
+
+*.RData
+
+*.pdf
+
+*.csv
+
+*.csv
+
+output/warnings_nonstationarity_projection2_1960+1970.csv
+
+output/warnings_nonstationarity_projection2_1960+1970.csv

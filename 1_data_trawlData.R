@@ -1,3 +1,8 @@
+# To install trawlData_perhaps just for the first time:
+# FIRST SET DIRECTORY TO trawlData
+#library(devtools)
+#devtools::install
+
 library(trawlData)
 library(ggplot2)
 library(stringr)
@@ -128,20 +133,6 @@ gmex = gmex[gmex$VESSEL_SPD < 5 & gmex$VESSEL_SPD > 0  & !is.na(gmex$VESSEL_SPD)
 seus = seus[!(seus$year == 1989 & seus$season == "spring"),] #They sampled at night this year-season
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #====================================================
 #====================================================
 
@@ -155,12 +146,4 @@ neamap$wtcpue <- neamap$TotWght/neamap$hectares
 # Combine categories of blue crab into one species
 neamap$spp[neamap$spp %in% c('Callinectes sapidus, adult fem', 'Callinectes sapidus, juv fem', 'Callinectes sapidus, male')] = "Callinectes sapidus"
 neamap <- neamap[!VIMSCODE==9001] # This species code has NA for names, there is only 5 incidence, so no big deal if it actually is a species I lack the name for
-
- 
-
-
-
-
-
-
 

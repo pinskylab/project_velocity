@@ -1,5 +1,3 @@
-# This script pretty much cleaned up_9/11/17
-
 library(data.table) 
 library(lattice)
 library(maps)
@@ -89,44 +87,3 @@ cor(preds) # SBT.seasonal highly correlated with all temperature metrics, all > 
 # Rugosity and grainsize are not strongly correlated with any of the temp variables or eachother.
 # The 'cor' function is not the same as an R2 value, it is higher
 cor(predsW) # correlations are a bit weaker on the west coast for a number of combinations
-
-# SCRIPT ENDS HERE
-
- 
-# ==========================================================================================================================================
-# Below produces 'haulsTrim' which is used for estimating annual mean cpue, which we no longer use.
-# If we bring this predictor back in, probably should go over this again (esp. for DFO surveys), b/c we added new sediment data to fill in some holes since the first time
-# ==========================================================================================================================================
-
-# The following year-survey combos grossly undersampled and thus not reliable for annual biomass predictor
-hauls <- hauls[!(hauls$survey== 'DFO_NewfoundlandFall' & hauls$year == 2008),] # only 7 hauls
-hauls <- hauls[!(hauls$survey== 'SEFSC_GOMexFall' & hauls$year == 1986),] # Only 24 hauls, all in very small area
-
-# Check out spatial effort history for each survey_Need to delineate consistent sampling footprint of each survey to estimate annual cpue
-# This code I recycled with each region (as needed) to determine how to delineate each survey region
-# ggplot(haulsTrim[haulsTrim$survey == 'AFSC_WCTri',], aes(x=lon, y=lat)) + geom_point() + facet_wrap(~year)
-# with(hauls[hauls$survey== 'AFSC_WCTri' & hauls$year == 1983,], range(lon))
-# hauls[(hauls$survey== 'NEFSC_NEUSFall' & hauls$year == 2014 & hauls$lat < 34.5),]
-
-# Need to drop the 'inshore' strata for NEUS and the 'offshore' strata for SEUS
-inshore <- c('3030','3040','3060','3070','3090','3100','3120','3130','3150','3160','3180','3190','3210','3220','3240','3250','3270','3280','3300','3310','3330','3340','3360',
-             '3370','3390','3400','3420','3430','3550','3580','7510') 
-offshore <- c('24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54', '56', '60', '62', '64', '66', '68')
- 
-# Create separate file to calculate annual average cpue for species 'i'_trims out hauls from inconsistent sampling region
-haulsTrim <- hauls[!(hauls$survey == 'DFO_ScotianShelfFall' & hauls$lat > 46.1),]
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'DFO_ScotianShelfFall' & haulsTrim$lat > 43.1 & haulsTrim$lon < -66),]
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'DFO_ScotianShelfFall' & haulsTrim$lat > 44 & haulsTrim$lon < -64.85),]
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'DFO_ScotianShelfSpring' & haulsTrim$lat > 43.1 & haulsTrim$lon < -66),]
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'DFO_ScotianShelfSpring' & haulsTrim$lat > 44.6 & haulsTrim$lon < -64.3),]
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'DFO_NewfoundlandFall' & haulsTrim$lat > 55.33),]
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'NEFSC_NEUSFall' & haulsTrim$lat < 34.5),]
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'NEFSC_NEUSFall' & haulsTrim$lon > -65.5),]
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'NEFSC_NEUSSpring' & haulsTrim$lat < 34.5),]
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'NEFSC_NEUSSpring' & haulsTrim$lon > -65.5),]
-haulsTrim <- haulsTrim[!haulsTrim$stratum %in% inshore,] # These strata values only found in NEUS
-haulsTrim <- haulsTrim[!(haulsTrim$region == 'SEFSC_GOMex' & haulsTrim$lon > -87.5),]
-haulsTrim <- haulsTrim[!(haulsTrim$stratum %in% offshore & haulsTrim$region == 'SCDNR_SEUS'),] # removes the offshore strata for SEUS in fall and spring
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'AFSC_WCTri' & haulsTrim$lat > 48.5),]
-haulsTrim <- haulsTrim[!(haulsTrim$survey == 'AFSC_WCTri' & haulsTrim$lon > -121.75),]
-rm(inshore, offshore)

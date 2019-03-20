@@ -19,23 +19,33 @@ runname <- "fitallreg_2017" # use all regions in each fit that are from the same
 load('data/master_hauls_March7_2017.RData') # import master hauls file
 load('data/dat_selectedspp_Feb_1_2017.Rdata')# load species catch data
 dat <- dat[!(dat$wtcpue == 0 & dat$region == 'DFO_SoGulf'),] # the zeros in SoGulf are actual zeros (ie not just a scale issue) and thus are true absences
-dat$wtcpue[dat$wtcpue == 0] <- 0.00002 # 'zeros' in dat are now species too light to register on scales_here a value below the lowest non-zero value is assigned_for transforming data
+dat$wtcpue[dat$wtcpue == 0] <- 0.0002 # 'zeros' in dat are now species too light to register on scales_here a value below the lowest non-zero value is assigned_for transforming data
 dat$wtcpue[dat$sppocean=="calappa sulcata_Atl" & is.na(dat$wtcpue)] <- 0.13 # the median weight of this species when observed
 dat$logwtcpue <- log(dat$wtcpue)
+
+# drop dubious GMex observations of temperate species
+drops <- c('alosa pseudoharengus_Gmex', 'brevoortia tyrannus_Gmex', 'clupea harengus_Gmex', 'dipturus laevis_Gmex', 'paralichthys dentatus_Gmex',
+           'hippoglossoides platessoides_Gmex', 'pseudopleuronectes americanus_Gmex', 'scomber scombrus_Gmex', 'cryptacanthodes maculatus_Gmex',
+           'echinarachnius parma_Gmex', 'illex illecebrosus_Gmex', 'melanostigma atlanticum_Gmex', 'menidia menidia_Gmex', 'ovalipes ocellatus_Gmex','placopecten magellanicus_Gmex')
+drops <- gsub('_Gmex', '_Atl', drops)
+dat <- dat[!(dat$region=='SEFSC_GOMexFall' & dat$sppocean %in% drops),]
+dat <- dat[!(dat$region=='SEFSC_GOMexSummer' & dat$sppocean %in% drops),]
+
 # trim columns that are already in master hauls file, which will be merged in below with the hauls data
 dat <- data.frame(haulid = dat$haulid, sppocean = dat$sppocean, Freq = dat$Freq, wtcpue = dat$wtcpue, logwtcpue = dat$logwtcpue, presfit = TRUE, stringsAsFactors = F)
 dat <- dat[!dat$sppocean=='NO CATCH',]
 #dat <- dat[!is.na(dat$wtcpue),] # drop NAs as it creates errors for some species. May want to go back and manually do 'oncorhynchus tshawytscha_Pac' as almost 10% of presence records have NA for wtcpue (tagging study?)
 # Found a species naming error_correcting here
 dat$sppocean[dat$sppocean=='heppasteria phygiana_Atl'] <- 'hippasteria phrygiana_Atl' # no need to aggregate as they never overlapped w/n hauls (only found in Newfoundland and they called it one way or the other)
-
-
+save(dat, hauls, file='data/hauls_catch_Dec2017.RData') # For distribution to other people
+  
 ######################
 # Start the big loop #
 ######################
       
 # Create table to store model diagnostics
 allspp = sort(unique(dat$sppocean))
+#allspp <- gsub('_Gmex', '_Atl', drops) # taken from MS_figures script
 #allspp <- sort(sample(allspp, 30))
 n = rep(NA, length(allspp))
 modeldiag = data.frame(sppocean=n, npres=n, fakepres=n, npres.tr=n, npres.te=n, ntot=n, thresh.kappa=n, thresh=n, thresh.trKap=n, thresh.tr=n, auc=n, auc.tt=n, tss=n, tss.tt=n, tssmax=n, tssmax.tt=n, acc=n, acc.tt=n, accmax=n, accmax.tt=n, sens=n, sens.tt=n, spec=n, spec.tt=n, kappa=n, kappa.tt=n, kappamax=n, kappamax.tt=n, rpb=n, prev.obs=n, prev.pred.prev=n, prev.pred.kap=n, smear=n, pred_obsMedian=n, pred_obsMean=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.surv_year=n, r2.pres.surv_year.kap=n, r2.abun.surv_year=n, r2.predPATT.surv_year=n, r2.predPATTkap.surv_year=n, r2.predTT.surv_year=n, dev.pres=n, dev.biomass=n, dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # pred_obsMedianNosmear=n, pred_obsMeanNosmear=n, # tt is for training/testing model
@@ -43,7 +53,7 @@ modeldiag = data.frame(sppocean=n, npres=n, fakepres=n, npres.tr=n, npres.te=n, 
 # redos2 <- c(40, 115, 159, 198, 201, 335, 361, 558, 651) # this group adds 6 other species that wasn't able to calculate an r2 value, but not one of our criteria so not going to look into it now
 
 #Open pdf to print figures 
-pdf(file=paste("figures/CEmodelGAMsmooths/GAMs_Revised_Nov2017_PART7_",runname,".pdf",sep=""),width=10,height=10)
+pdf(file=paste("figures/CEmodelGAMsmooths/GAMs_Revised_Nov2017_GmexDrops_",runname,".pdf",sep=""),width=10,height=10)
  
 options(warn=1) # print warnings as they occur
 allwarnings = NULL
@@ -65,7 +75,8 @@ for(i in 1:length(allspp)){
   myocean <- head(spdata$ocean[spdata$presfit == TRUE])[1] # identify if this is a Pacific or Atlantic species
   spdata <- spdata[spdata$ocean == myocean,] # trim master hauls file to the ocean of interest 
   spdata$presfit[is.na(spdata$presfit)] <- FALSE
-      
+  #spdata$logwtcpue[spdata$region == "SEFSC_GOMex" & spdata$presfit==TRUE] <- NA
+  #spdata$presfit[spdata$region == "SEFSC_GOMex" & spdata$presfit==TRUE] <- FALSE
   # The three anchovy species were not identified in SEUS_so should drop that region for those species_otherwise is erroneous zeros
   if(grepl("anchoa", sp)){
     spdata <- spdata[!spdata$regionfact=='SCDNR_SEUS',]
@@ -444,17 +455,27 @@ for(i in 1:length(allspp)){
   
   sp <- gsub('/', '', sp) # would mess up saving the file
    
-  save(mods, file=paste(modfolder, 'CEmods_Nov2017_', runname, '_', sp, '.RData', sep='')) 
+  save(mods, file=paste(modfolder, 'CEmods_Nov2017_GMEXdrop_', runname, '_', sp, '.RData', sep='')) 
   
   # write these files each time through the loop so that we can watch progress
-  save(modeldiag, file=paste("output/modeldiag_Nov2017_", runname,".Rdata",sep=""))
-  write.csv(modeldiag, file=paste("output/modeldiag_Nov2017_", runname,".csv",sep=""))
+  save(modeldiag, file=paste("output/modeldiag_Nov2017_GMEXdrop_", runname,".Rdata",sep=""))
+  write.csv(modeldiag, file=paste("output/modeldiag_Nov2017_GMEXdrop_", runname,".csv",sep=""))
   
-  write.csv(allwarnings, file=paste('output/warnings_Nov2017_', runname, '.csv', sep=''))
+  write.csv(allwarnings, file=paste('output/warnings_Nov2017_GMEXdrop_', runname, '.csv', sep=''))
 }
 dev.off()
- 
+    
 # BE SURE TO DROP i=260 from modeldiag and allspp
 modeldiag <- modeldiag[-260,]
 save(modeldiag, file=paste("output/modeldiag_Nov2017_", runname,".Rdata",sep=""))
 write.csv(modeldiag, file=paste("output/modeldiag_Nov2017_", runname,".csv",sep=""))
+
+modeldiag_gmex <- modeldiag
+rm(modeldiag)
+load(paste("output/modeldiag_Nov2017_", runname,".Rdata",sep=""))
+modeldiag <- modeldiag[!(modeldiag$sppocean %in% allspp),]
+modeldiag <- rbind(modeldiag, modeldiag_gmex)
+modeldiag <- modeldiag[order(modeldiag$sppocean),]
+save(modeldiag, file=paste("output/modeldiag_Nov2017_", runname,".Rdata",sep=""))
+write.csv(modeldiag, file=paste("output/modeldiag_Nov2017_", runname,".csv",sep=""))
+
