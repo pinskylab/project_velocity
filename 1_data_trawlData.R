@@ -1,4 +1,6 @@
-# To install trawlData_perhaps just for the first time:
+# Combine all the trawl survey data with the ‘trawlData’ package. 
+
+# To install trawlData package_perhaps just for the first time:
 # FIRST SET DIRECTORY TO trawlData
 #library(devtools)
 #devtools::install

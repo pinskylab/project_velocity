@@ -4,7 +4,7 @@
 }
 {\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c16863\c36078\c98039;\csgenericrgb\c0\c0\c0;
 }
-\margl1440\margr1440\vieww19920\viewh21580\viewkind0
+\margl1440\margr1440\vieww23700\viewh24180\viewkind1
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\fs24 \cf0 project_velocity\
@@ -16,14 +16,15 @@ Projecting shifts in habitat for 686 North American marine species under RCP 2.6
 Publication:\
 \pard\pardeftab720\sl260\sa240\partightenfactor0
 
-\f0\fs21\fsmilli10667 \cf2 Morley JW, Selden RL, Latour RJ, Fro\uc0\u32 \u776 licher TL, Seagraves RJ, Pinsky ML (2018) Projecting shifts in thermal habitat for 686 species on the North American continental shelf. PLoS ONE 13(5): e0196127. \cf3 https://doi.org/10.1371/journal. pone.0196127 
+\f0\fs21\fsmilli10667 \cf2 Morley JW, Selden RL, Latour RJ, Frolicher TL, Seagraves RJ, Pinsky ML (2018) Projecting shifts in thermal habitat for 686 species on the North American continental shelf. PLoS ONE 13(5): e0196127. \cf3 https://doi.org/10.1371/journal. pone.0196127 
 \f1\fs24 \cf2 \
 \pard\pardeftab720\sl280\partightenfactor0
 \cf2 \
 Contact:\
 James Morley\
 University of North Carolina, Chapel Hill\
-\ul jwmorley@email.unc.edu\ulnone \
+\pard\pardeftab720\sl280\partightenfactor0
+\cf2 \ul \ulc2 jwmorley@email.unc.edu\ulnone \
 \
 Malin Pinsky\
 Rutgers University\
@@ -33,56 +34,32 @@ Rutgers University\
 \
 \pard\pardeftab720\sl280\partightenfactor0
 \cf4 \ulnone Directories\
-data: \
+data: Contains Rdata files used in the R-scripts. These include the raw temperature projection data in the sub-directory \'91Temp proj files\'92 and the formatted temperature projection files in the subdirectory \'91prediction_files_Nov2017\'92. \
 \
-figures:\
+figures: Contains the figures from the projections project. \
 \
-output: \
 \
 Analysis workflow\
-Note: that I generally ran each species individually, so most of the scripts are set up to run one species at a time. The numbers on the R-scripts are just continuing from the project_velocity repository. \
+1_data_allcombine.r\
+Combine the trawl survey data together and reformat in preparation for creating climatologies and climate envelope models\
 \
-Uncertainty_caret_optimizeBRT.R\
-Fits BRT models that are optimized with the CARET package\
+1_data_trawlData.R\
+An alternative method to combine all the trawl survey data with the \'91trawlData\'92 package. This is the script that was ultimately used for the manuscript.\
 \
-6_model_fitting_UNCERTAINTY.R \
-To be run individually on species. Generates the raw data used to fit niche models. Then fits GAM, GLM, and BRT niche models for that species. \
+1.5_merge_hadl_noaa_sst.r\
+Fill in missing SST values for a portion of the trawl hauls, using satellite temperature observations from the Hadley NOAA/OI\
 \
-9_uncertainty_plots.R\
-Produces \'91modeldiag\'92 for individual species, which is a set of niche model diagnostics. Also produces a number of summary figures that assesses niche model performance_these are currently in the \'91Uncertainty_nichMod_diagnostics\'92 directory. \
+2_create_climatologies.r\
+Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. \cf4 This created the historic climatology within each survey region based on in situ temperature measurements.\cf4 \
 \
-10_projection_cluster_uncertainty_GAM.R\
-Fits the GAM based projections, including each iteration of parameter values. This is set up to run on a cluster system with shell scripts.\
+3_calculate_delta.r\
+\pard\pardeftab720\sl280\partightenfactor0
+\cf4 Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. This calculate the delta (i.e., change in temperature) values within each grid cell for each projection year, 2007-2100.\cf4 \
 \
-10_projection_uncertainty_MEAN.R\
-The projections for each niche model are conducted here across all ESM and RCP, but this does not include the parameter uncertainty iterations.\
+4_climateprojection.r\
+\cf4 Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. This integrates the historic climatology from script 2 with the delta values from script 3 to compute the temperature projections.\cf4 \
 \
-10_projection_uncertainty_GLM.R\
-Fits the GLM based projections, including each iteration of parameter values. \
-\
-Extract_EEZ.R\
-Assigns grid cells in the projection grid into the U.S. EEZ.\
-\
-11_projection_uncertainty_summaries.R\
-Packages projection runs and converts to simple metrics such as centroid, to allow graphing and uncertainty analysis. Also there are some summary graphs in here that were not used in the MS.\
-\
-Dominance analysis.R\
-Customized functions to conduct dominance analysis, which was used to partition sum of squares.\
-\
-Uncertainty figures_2018.R\
-Conducts the partitioning of the sum of squares with the dominance analysis and produces one of the major figures in the MS.\
-\
-Uncertainty figures_meanProj_2018.R\
-Produces one of the MS figures that is comparing 6 different niche models.\
-\
-Uncertainty figures_meanProjMap_2018.R\
-Produces one of the MS figures (which is no longer used), the ensemble projection of habitat shown as a map. This script is set up to work with one \'91best\'92 niche model.\
-\
-Uncertainty figures_ENSmeanProjMap_2018.R\
-Produces one of the MS figures, the ensemble projection of habitat shown as a map with 6 niche models x 18 climate models under RCP8.5.\
-\
-OBIS maps.R\
-Brings in OBIS data files for each species and cleans the data. Then produces the map of species occurrences.\
-\
+4.5_summarize_climprojections.r\
+\cf4 Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. Basic summary statistics and plots for the temperature projections.\
 \
 }
