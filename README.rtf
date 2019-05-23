@@ -4,7 +4,7 @@
 }
 {\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c16863\c36078\c98039;\csgenericrgb\c0\c0\c0;
 }
-\margl1440\margr1440\vieww23700\viewh24180\viewkind1
+\margl1440\margr1440\vieww24000\viewh24480\viewkind1
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\fs24 \cf0 project_velocity\
@@ -50,16 +50,19 @@ An alternative method to combine all the trawl survey data with the \'91trawlDat
 Fill in missing SST values for a portion of the trawl hauls, using satellite temperature observations from the Hadley NOAA/OI\
 \
 2_create_climatologies.r\
-Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. \cf4 This created the historic climatology within each survey region based on in situ temperature measurements.\cf4 \
+Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. This created the historic climatology within each survey region based on in situ temperature measurements.\
 \
 3_calculate_delta.r\
-\pard\pardeftab720\sl280\partightenfactor0
-\cf4 Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. This calculate the delta (i.e., change in temperature) values within each grid cell for each projection year, 2007-2100.\cf4 \
+Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. This calculate the delta (i.e., change in temperature) values within each grid cell for each projection year, 2007-2100.\
 \
 4_climateprojection.r\
-\cf4 Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. This integrates the historic climatology from script 2 with the delta values from script 3 to compute the temperature projections.\cf4 \
+Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. This integrates the historic climatology from script 2 with the delta values from script 3 to compute the temperature projections.\
 \
 4.5_summarize_climprojections.r\
-\cf4 Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. Basic summary statistics and plots for the temperature projections.\
+Only used for an earlier version of the manuscript and not for published version. Because T. Froelicher completed this independently. Basic summary statistics and plots for the temperature projections.\
 \
-}
+5_select_species.r\
+Standardizes species names across surveys based on some files that have species name corrections. Also corrects some species names. Drops species/life stages that are not of interest (e.g., larval fish). Picks the species that are ultimately included in the analysis based on frequency of occurence. \
+\
+5.4_master_haul_file.R\
+Merge together a number of files containing the environmental data for hauls, which creates a master file for the trawl-hauls. }

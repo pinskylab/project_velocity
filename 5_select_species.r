@@ -183,7 +183,7 @@ load("Jim/Depth.RData") # from trawlData package, I think it is depth data from 
 
 
 #===============
-# Some potentially eraseable code
+# Some potentially old-eraseable code below
 #===============
 
 # Make subset of rugosity file that overlaps with SEUS box; then round to same number of sigfigs.
