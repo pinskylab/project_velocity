@@ -4,7 +4,7 @@
 }
 {\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c16863\c36078\c98039;\csgenericrgb\c0\c0\c0;
 }
-\margl1440\margr1440\vieww24000\viewh24480\viewkind1
+\margl1440\margr1440\vieww24300\viewh24780\viewkind1
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\fs24 \cf0 project_velocity\
@@ -65,4 +65,13 @@ Only used for an earlier version of the manuscript and not for published version
 Standardizes species names across surveys based on some files that have species name corrections. Also corrects some species names. Drops species/life stages that are not of interest (e.g., larval fish). Picks the species that are ultimately included in the analysis based on frequency of occurence. \
 \
 5.4_master_haul_file.R\
-Merge together a number of files containing the environmental data for hauls, which creates a master file for the trawl-hauls. }
+Merge together a number of files containing the environmental data for hauls, which creates a master file for the trawl-hauls. \
+\
+6_model_fitting_loop.R\
+Fits the niche model to each species and calculates some sdm model evaluation statistics.\
+\
+7_Prep_Projections.R\
+Drop species with poorly fit habitat models and then reformat the region value for conducting projections. \
+Then reads in and formats all the climate projection data into a data structure that can be used to predict with the habitat models. Also produces some figures for the climate projection and some code to qaqc the climate data.  \
+\
+}

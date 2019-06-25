@@ -11,7 +11,7 @@ if(Sys.info()["user"] == "jamesmorley"){
       
 # options(repos='http://cran.rstudio.com/') # to get packages installed on amphiprion
 # install.packages("dismo")
-
+  
 # Loop through species and fit models.
 library(mgcv);library(dismo)
 runname <- "fitallreg_2017" # use all regions in each fit that are from the same ocean
@@ -23,7 +23,7 @@ dat$wtcpue[dat$wtcpue == 0] <- 0.0002 # 'zeros' in dat are now species too light
 dat$wtcpue[dat$sppocean=="calappa sulcata_Atl" & is.na(dat$wtcpue)] <- 0.13 # the median weight of this species when observed
 dat$logwtcpue <- log(dat$wtcpue)
 
-# drop dubious GMex observations of temperate species
+# drop dubious GMex observations of temperate species or species that have a Gulf of Mexico endemic congener that closely resembles the Atlantic coast species
 drops <- c('alosa pseudoharengus_Gmex', 'brevoortia tyrannus_Gmex', 'clupea harengus_Gmex', 'dipturus laevis_Gmex', 'paralichthys dentatus_Gmex',
            'hippoglossoides platessoides_Gmex', 'pseudopleuronectes americanus_Gmex', 'scomber scombrus_Gmex', 'cryptacanthodes maculatus_Gmex',
            'echinarachnius parma_Gmex', 'illex illecebrosus_Gmex', 'melanostigma atlanticum_Gmex', 'menidia menidia_Gmex', 'ovalipes ocellatus_Gmex','placopecten magellanicus_Gmex')

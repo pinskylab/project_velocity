@@ -1,6 +1,6 @@
 # First, examine habitat model fits and decide what species to include for projections
 # Second, bring in climate projection data and prep for predictions with GAMs
-   
+    
 ## Set working directory
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
@@ -339,7 +339,7 @@ levelplot(X89 ~ lonClimgrid * latClimgrid, data = abc[!is.na(abc$X89),], at = cu
 
 
 # =================================================================================
-# Below here is Malin's original code
+# Below here is Malin's original code_was not used for final manuscript.
 # =================================================================================
 
 load('data/ProjectionBathGrid_Feb27_2017.RData')# load projection grid 
