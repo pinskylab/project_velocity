@@ -4,7 +4,7 @@
 }
 {\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c16863\c36078\c98039;\csgenericrgb\c0\c0\c0;
 }
-\margl1440\margr1440\vieww24300\viewh24780\viewkind1
+\margl1440\margr1440\vieww12820\viewh25460\viewkind1
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\fs24 \cf0 project_velocity\
@@ -73,5 +73,15 @@ Fits the niche model to each species and calculates some sdm model evaluation st
 7_Prep_Projections.R\
 Drop species with poorly fit habitat models and then reformat the region value for conducting projections. \
 Then reads in and formats all the climate projection data into a data structure that can be used to predict with the habitat models. Also produces some figures for the climate projection and some code to qaqc the climate data.  \
+\
+7b_projection_clusterB_PA.R\
+Conducts projections based on the probability of occurrence GAM model only (i.e., not what was used in the Plos One paper). The script integrates the habitat models with the climate projection models and then saves the aggregated (20 year time bins) output. This script is activated by a shell script, which was used on a CPU cluster. \
+\
+7b_projection_clusterB.R\
+\pard\pardeftab720\sl280\partightenfactor0
+\cf4 Conducts projections based on the delta biomass GAM model. The script integrates the habitat models with the climate projection models and then saves the aggregated (20 year time bins) output. This script is activated by a shell script, which was used on a CPU cluster. \
+\
+8_summarize_projections.R\
+Some of Malin\'92s old code from the first round of projections, which were done on a regional basis. This script was not ultimately used on the Plos One (2018) paper. \
 \
 }
