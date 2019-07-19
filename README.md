@@ -4,12 +4,12 @@ README
 project\_velocity Projecting shifts in habitat for 686 North American
 marine species under RCP 2.6 and 8.5.
 
-Publication: Morley JW, Selden RL, Latour RJ, Frolicher TL, Seagraves
-RJ, Pinsky ML (2018) Projecting shifts in thermal habitat for 686
-species on the North American continental shelf. PLoS ONE 13(5):
-e0196127. <https://doi.org/10.1371/journal>. pone.0196127
+**Publication:** Morley JW, Selden RL, Latour RJ, Frolicher TL,
+Seagraves RJ, Pinsky ML (2018) Projecting shifts in thermal habitat for
+686 species on the North American continental shelf. PLoS ONE 13(5):
+e0196127. <https://doi.org/10.1371/journal.pone.0196127>
 
-Contact: James Morley University of North Carolina, Chapel Hill
+**Contact:** James Morley University of North Carolina, Chapel Hill
 <jwmorley@email.unc.edu>
 
 Malin Pinsky Rutgers University <malin.pinsky@rutgers.edu>
