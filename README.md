@@ -29,52 +29,15 @@ Contains the figures from the projections project.
 
 # Analysis workflow
 
-Note: There are some older scripts here from initial work on this
-manuscript, which were not ultimately used. This is noted where
-appropriate.
-
-## 1\_data\_allcombine.r
-
-Combine the trawl survey data together and reformat in preparation for
-creating climatologies and climate envelope models
-
 ## 1\_data\_trawlData.R
 
-An alternative method to combine all the trawl survey data with the
-‘trawlData’ package. This is the script that was ultimately used for
-the manuscript.
+Combine all the trawl survey data with the
+‘trawlData’ package. 
 
 ## 1.5\_merge\_hadl\_noaa\_sst.r
 
 Fill in missing SST values for a portion of the trawl hauls, using
 satellite temperature observations from the Hadley NOAA/OI
-
-## 2\_create\_climatologies.r
-
-Only used for an earlier version of the manuscript and not for published
-version. Because T. Froelicher completed this independently. This
-created the historic climatology within each survey region based on in
-situ temperature measurements.
-
-## 3\_calculate\_delta.r
-
-Only used for an earlier version of the manuscript and not for published
-version. Because T. Froelicher completed this independently. This
-calculate the delta (i.e., change in temperature) values within each
-grid cell for each projection year, 2007-2100.
-
-## 4\_climateprojection.r
-
-Only used for an earlier version of the manuscript and not for published
-version. Because T. Froelicher completed this independently. This
-integrates the historic climatology from script 2 with the delta values
-from script 3 to compute the temperature projections.
-
-## 4.5\_summarize\_climprojections.r
-
-Only used for an earlier version of the manuscript and not for published
-version. Because T. Froelicher completed this independently. Basic
-summary statistics and plots for the temperature projections.
 
 ## 5\_select\_species.r
 
@@ -133,30 +96,6 @@ Conducts projections based on the delta biomass GAM model. The script
 integrates the habitat models with the climate projection models and
 then saves the aggregated (20 year time bins) output. This script is
 activated by a shell script, which was used on a CPU cluster.
-
-## 8\_summarize\_projections.R
-
-Some of Malin’s old code from the first round of projections, which were
-done on a regional basis. This script was not ultimately used on the
-Plos One (2018) paper.
-
-## 8.1B\_plot\_projection\_summaries.R
-
-Some of Malin’s old code from the first round of projections, which were
-done on a regional basis. A bunch of figures are made here with the
-projections output. This script was not ultimately used on the Plos One
-(2018) paper.
-
-## 8.5\_summarize\_projections\_separate\_models.r
-
-Some of Malin’s old code from the first round of projections, which were
-done on a regional basis. This script was not ultimately used on the
-Plos One (2018) paper.
-
-## abundance\_model\_testing.r
-
-Tests how much variation/deviance is explained by temperature in
-abundance GAMs. We did not report these output in the Plos One paper.
 
 ## MS\_figures.R
 
