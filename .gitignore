@@ -1,7 +1,6 @@
 *.RData
 *.rdata
 *.Rdata
-
 *.gz
 *.nc
 *.csv
@@ -12,19 +11,13 @@
 *.docx
 *.png
 *.Rout
-
-
 .Rapp.history
-
 .Rhistory
 .Rproj.user
-
 proj_ranges.Rproj
-
 *.RData
 *.rdata
 *.Rdata
-
 *.gz
 *.nc
 *.csv
@@ -35,13 +28,9 @@ proj_ranges.Rproj
 *.docx
 *.png
 *.Rout
-
 avhrr-only-v2.19890101
-
-
 #ignore all cmsp data files for now
 cmsp_data/*
-
 # ignore all "data" files (also on https://github.com/mpinsky/proj_ranges)
 output/*
 data/*
@@ -49,23 +38,15 @@ data/sbt_rcp85/*
 data/sbt_rcp26/*
 data/sst_rcp85/*
 data/sst_rcp26/*
-
 *.Rout
-
 *.Rout
-
 6_model_fitting_loop_update_PART2.Rout
-
 *.Rout
-
 *.RData
-
 *.pdf
-
 *.csv
-
 *.csv
-
 output/warnings_nonstationarity_projection2_1960+1970.csv
-
 output/warnings_nonstationarity_projection2_1960+1970.csv
+README.Rmd
+jims_projections.Rproj
