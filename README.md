@@ -21,7 +21,7 @@ Malin Pinsky Rutgers University <malin.pinsky@rutgers.edu>
 Contains Rdata files used in the R-scripts. 
 The raw temperature projection data in the sub-directory ‘Temp proj files’ and
 the formatted temperature projection files in the subdirectory
-‘prediction\_files\_Nov2017’ are too large to store on GitHub, however.
+‘prediction\_files\_Nov2017’ are too large to store on GitHub, however, and are stored on the lab server in the shared pinsky_lab folder in a directory called projections_PlosOne2018.
 
 ## figures:
 
