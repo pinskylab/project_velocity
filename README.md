@@ -23,6 +23,8 @@ The raw temperature projection data in the sub-directory ‘Temp proj files’ a
 the formatted temperature projection files in the subdirectory
 ‘prediction\_files\_Nov2017’ are too large to store on GitHub, however, and are stored on the lab server in the shared data_largefiles: folder in a directory called projections_PlosOne2018.
 
+Additional large files can be found stored on the lab's Box account.
+
 ## figures:
 
 Contains the figures from the projections project.
